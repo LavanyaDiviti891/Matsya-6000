@@ -59,7 +59,7 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
 )
-from scenario import scenario_state, reset_scenario, run_maneuvering_phase_scenario
+from scenario import scenario_state, reset_scenario, run_emg_dropweights_scenario
 
 import asyncio
 import random
@@ -920,6 +920,8 @@ def AppLayout(active_tab="Main"):
                     highlight = True
                 elif sc.mission_name == "MANEUVERING PHASE" and state_key in ("ej_manipulator_1", "ej_manipulator_2", "ej_manipulator_3", "ej_manipulator_4"):
                     highlight = True
+                elif sc.mission_name == "Emergency Drop weights" and state_key in ("sw.Emergency_Drop_Weight_P1(SC) or  sw.Emergency_Drop_Weight_P1(PC)"):
+                    highlight = True
             border = "border:2px solid #facc15; border-radius:4px;" if highlight else ""
             return Div(
                 Span(label, style="font-size: 12px; font-weight: 500;"),
@@ -943,14 +945,14 @@ def AppLayout(active_tab="Main"):
         man_label  = "🟡 SCENARIO ACTIVE" if man_is_active else ("✅ MISSION COMPLETE" if man_is_success is True else ("❌ MISSION FAILED" if man_is_success is False else "▶  START SCENARIO"))
         man_scenario_banner = Div(
             Div(
-                Span("MANEUVERING PHASE", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
+                Span("Emergency Drop weights", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
                 Span(man_label, style=f"font-size:12px; color:{man_border}; margin-left:12px;"),
                 style="display:flex; align-items:center; flex:1;"
             ),
             Div(
                 Span(
                     "START" if not man_is_active else "RUNNING…",
-                    hx_post="/api/scenario/maneuvering/start",
+                    hx_post="/api/scenario/Emergency/start",
                     hx_swap="none",
                     style=(
                         "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
@@ -961,7 +963,7 @@ def AppLayout(active_tab="Main"):
                 ),
                 Span(
                     "RESET",
-                    hx_post="/api/scenario/maneuvering/reset",
+                    hx_post="/api/scenario/Emergency/reset",
                     hx_swap="none",
                     style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
                 ),
@@ -1108,7 +1110,7 @@ async def get(dive_num: int = 1):
 
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_maneuvering_phase_scenario(app_state, broadcast, ScenarioOverlay)
+            run_emg_dropweights_scenario(app_state, broadcast, ScenarioOverlay)
         )
 
     return Title("MATSYA 6000 View"), Div(
@@ -1318,17 +1320,17 @@ async def simulate_data():
 # Scenario API routes
 # ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-@rt("/api/scenario/maneuvering/start", methods=["POST"])
+@rt("/api/scenario/emergency/start", methods=["POST"])
 async def man_scenario_start():
     global scenario_task
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_maneuvering_phase_scenario(app_state, broadcast, ScenarioOverlay)
+            run_emg_dropweights_scenario(app_state, broadcast, ScenarioOverlay)
         )
     return ""
 
 
-@rt("/api/scenario/maneuvering/reset", methods=["POST"])
+@rt("/api/scenario/emergency/reset", methods=["POST"])
 async def man_scenario_reset():
     global scenario_task
     if scenario_task and not scenario_task.done():

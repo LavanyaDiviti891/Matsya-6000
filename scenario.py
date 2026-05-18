@@ -41,23 +41,18 @@ def reset_scenario(sc: ScenarioState) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Core scenario coroutine
-# Call this as: asyncio.create_task(run_drop_weight_scenario(app_state, broadcast_fn))
+# Emergency Drop Weights Scenario
 # ─────────────────────────────────────────────────────────────────────────────
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Maneuvering Phase Scenario
-# ─────────────────────────────────────────────────────────────────────────────
-async def run_maneuvering_phase_scenario(app_state, broadcast_fn, ScenarioOverlay_fn):
+async def run_emg_dropweights_scenario(app_state, broadcast_fn, ScenarioOverlay_fn):
     """
-    Scenario: MANEUVERING PHASE
+    Scenario: EMERGENCY DROP WEIGHTS
     ─────────────────────────────────────────
-    Pitch and roll fluctuate.
-    Pilot enables thrusters, then joystick.
-    After 30s from joystick enable, alarm shows "Manipulator in foreign body".
-    Pilot must trigger emergency jettisoning manipulator switch.
+    Sub ascends: depth decreases gradually from 1000m → 510m over 60s.
+    Altitude increases inversely from 30m → 100m.
+    Pilot must enable port_side_sdw_1, then starboard_side_sdw_1.
+    After 10s in stage 3 without action, alarm fires.
+    Pilot must trigger em_drop_weight_p1_sc or em_drop_weight_p2_pc to succeed.
     """
-    import random
     sc = scenario_state
     sw = app_state.switches.state
     sb = app_state.sidebar
@@ -65,20 +60,28 @@ async def run_maneuvering_phase_scenario(app_state, broadcast_fn, ScenarioOverla
     # ── initialise ────────────────────────────────────────────────────────────
     sc.active = True
     sc.success = None
-    sc.mission_name = "MANEUVERING PHASE"
-    sc.timer_total = 60  # 3 minutes should be enough
+    sc.mission_name = "Emergency Drop weights"
+    sc.timer_total = 60
     sc.timer_remaining = 60
     sc.result_message = ""
-    sc.feedback_msg = "Maneuvering Phase Started"
+    sc.feedback_msg = "Ascend Phase Started"
     sc.current_stage = 1
 
     # Reset relevant switches
-    sb.thrusters_enable = False
-    sb.joystick = False
-    sw.ej_manipulator_1 = False
-    sw.ej_manipulator_2 = False
-    sw.ej_manipulator_3 = False
-    sw.ej_manipulator_4 = False
+    sw.port_side_sdw_1 = False
+    sw.starboard_side_sdw_1 = False
+    sw.em_drop_weight_p1_sc = False
+    sw.em_drop_weight_p2_pc = False
+
+    # Depth decreases from 1000m → 510m over 60s (~8.17m per tick)
+    depth_start    = 1000.0
+    depth_end      = 510.0
+    depth_step     = (depth_start - depth_end) / sc.timer_total
+
+    # Altitude increases inversely from 30m → 100m over 60s (~1.17m per tick)
+    altitude_start = 30.0
+    altitude_end   = 100.0
+    altitude_step  = (altitude_end - altitude_start) / sc.timer_total
 
     stage3_timer = 10
 
@@ -87,27 +90,26 @@ async def run_maneuvering_phase_scenario(app_state, broadcast_fn, ScenarioOverla
         if not sc.active:
             break
 
-        # Fluctuate pitch and roll
-        app_state.imu.pitch.value = round(random.uniform(5, 10) * random.choice([-1, 1]), 1)
-        app_state.imu.roll.value = round(random.uniform(20, 30) * random.choice([-1, 1]), 1)
+        # Gradually decrease depth and increase altitude each tick
+        app_state.header.depth.value    = round(depth_start    - depth_step    * elapsed, 1)
+        app_state.header.altitude.value = round(altitude_start + altitude_step * elapsed, 1)
 
         sc.timer_remaining = sc.timer_total - elapsed
         sc.blink = not sc.blink
 
         if sc.current_stage == 1:
-            if sb.thrusters_enable:
+            if sw.port_side_sdw_1:
                 sc.current_stage = 2
         elif sc.current_stage == 2:
-            if sb.joystick:
+            if sw.starboard_side_sdw_1:
                 sc.current_stage = 3
         elif sc.current_stage == 3:
             stage3_timer -= 1
             if stage3_timer <= 0:
-                sc.feedback_msg = "ALARM: Manipulator in foreign body!"
+                sc.feedback_msg = "ALARM: Drop weights are not being triggered!"
                 sc.current_stage = 4
         elif sc.current_stage == 4:
-            if (sw.ej_manipulator_1 or sw.ej_manipulator_2 or 
-                sw.ej_manipulator_3 or sw.ej_manipulator_4):
+            if (sw.em_drop_weight_p1_sc or sw.em_drop_weight_p2_pc):
                 sc.success = True
                 sc.active = False
                 sc.result_message = "Emergency jettisoning successful. Mission complete."
@@ -127,4 +129,3 @@ async def run_maneuvering_phase_scenario(app_state, broadcast_fn, ScenarioOverla
     await asyncio.sleep(6)
     reset_scenario(sc)
     await broadcast_fn(ScenarioOverlay_fn())
-
