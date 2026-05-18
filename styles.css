@@ -1,0 +1,213 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Tell Tailwind v4 to scan FastHTML python files for classes */
+@source "./*.py";
+@source "./**/*.py";
+
+@theme {
+  /* Override default sans with Inter for that Vercel feel */
+  --font-* : initial;
+  --font-sans: "Inter", "Helvetica Neue", sans-serif;
+  
+  /* Custom colors for Vercel minimalist style */
+  --color-v-border: #eaeaea;
+  --color-v-bg: #fafafa;
+  --color-v-card: #ffffff;
+  --color-v-text: #111111;
+  --color-v-subtext: #666666;
+  --color-v-green: #17c964;
+  --color-v-red: #f31260;
+}
+
+body {
+    background-color: var(--color-v-bg);
+    color: var(--color-v-text);
+    font-family: var(--font-sans);
+}
+
+/* ============================================
+   SCENARIO TAB — Payload Drop
+   ============================================ */
+
+.sc-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Stage table */
+.sc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.sc-table th {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--color-v-border);
+    color: var(--color-v-subtext);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.sc-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--color-v-border);
+}
+.sc-row-active td {
+    background: #e8f0fe;
+    font-weight: 600;
+    color: #1a56db;
+}
+.sc-row-done td {
+    color: #aaa;
+    text-decoration: line-through;
+}
+.sc-row-failed td {
+    color: var(--color-v-red);
+}
+
+/* Badges */
+.sc-badge {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 99px;
+    display: inline-block;
+}
+.sc-badge-pending  { background: #f0f0f0; color: #888; }
+.sc-badge-active   { background: #e8f0fe; color: #1a56db; }
+.sc-badge-done     { background: #e6f9ec; color: #17c964; }
+.sc-badge-failed   { background: #fdecea; color: var(--color-v-red); }
+
+/* Altitude display */
+.sc-alt-block {
+    background: #f4f4f4;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.sc-alt-label { font-size: 11px; color: var(--color-v-subtext); text-transform: uppercase; letter-spacing: 0.05em; }
+.sc-alt-value { font-size: 28px; font-weight: 700; color: var(--color-v-text); }
+.sc-alt-sub   { font-size: 13px; color: var(--color-v-subtext); }
+
+/* Timer */
+.sc-timer-widget {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f4f4f4;
+    border-radius: 8px;
+}
+.sc-timer-label { font-size: 13px; color: var(--color-v-subtext); white-space: nowrap; }
+.sc-timer-value { font-size: 24px; font-weight: 700; min-width: 64px; }
+.sc-timer-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.sc-timer-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #17c964;
+    transition: background 0.4s;
+}
+
+/* Weight buttons */
+.sc-weight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+    gap: 8px;
+}
+.sc-weight-btn {
+    padding: 10px 6px;
+    border: 1px solid var(--color-v-border);
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    transition: background 0.12s, border-color 0.12s;
+    color: var(--color-v-text);
+}
+.sc-weight-btn:hover:not(:disabled) {
+    background: #f0f0f0;
+    border-color: #bbb;
+}
+.sc-weight-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+.sc-weight-correct {
+    border-color: #17c964 !important;
+    background: #e6f9ec !important;
+    color: #0a6640 !important;
+    font-weight: 600;
+}
+.sc-weight-wrong {
+    border-color: var(--color-v-red) !important;
+    background: #fdecea !important;
+    color: var(--color-v-red) !important;
+}
+
+/* Action row */
+.sc-action-row { display: flex; gap: 8px; }
+
+.sc-advance-btn {
+    padding: 10px 20px;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    transition: background 0.12s, opacity 0.12s;
+}
+.sc-advance-btn:hover:not(:disabled) { background: #333; }
+.sc-advance-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.sc-restart-btn {
+    padding: 10px 20px;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+}
+.sc-restart-btn:hover { background: #333; }
+
+/* Result banners */
+.sc-result-area { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.sc-result-pass {
+    padding: 12px 18px;
+    background: #e6f9ec;
+    border: 1px solid #17c964;
+    border-radius: 6px;
+    color: #0a6640;
+    font-weight: 600;
+    font-size: 14px;
+}
+.sc-result-fail {
+    padding: 12px 18px;
+    background: #fdecea;
+    border: 1px solid var(--color-v-red);
+    border-radius: 6px;
+    color: var(--color-v-red);
+    font-weight: 600;
+    font-size: 14px;
+}
+
