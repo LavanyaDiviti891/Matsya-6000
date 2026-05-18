@@ -59,7 +59,7 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
 )
-from scenario import scenario_state, run_drop_weight_scenario, reset_scenario, run_sequential_drop_scenario
+from scenario import scenario_state, reset_scenario, run_maneuvering_phase_scenario
 
 import asyncio
 import random
@@ -137,7 +137,7 @@ def ScenarioOverlay():
         urgent = sc.timer_remaining <= 10
         border_color = "#ff6600" if (urgent and sc.blink) else "#facc15"
         glow_color   = "#facc1544"
-        status_text  = "⚠  DEPTH CRITICAL — DROP WEIGHT NOW"
+        status_text  = "⚠  SCENARIO IN PROGRESS"
 
     # ── timer bar (only while active) ─────────────────────────────────────────
     pct = max(0, sc.timer_remaining / sc.timer_total * 100)
@@ -181,13 +181,7 @@ def ScenarioOverlay():
     if getattr(sc, 'feedback_msg', ''):
         hint = Div(sc.feedback_msg, style="font-size:13px; color:#facc15; margin-top:6px; font-weight:700;")
     else:
-        hint = Div(
-            "→ Go to the  ",
-            Span("Switches", style="color:#facc15; font-weight:700;"),
-            " tab → flip  ",
-            Span("Emergency Drop Weight P1 or P2", style="color:#facc15; font-weight:700;"),
-            style="font-size:12px; color:#aaa; margin-top:6px;",
-        ) if sc.success is None else Div()
+        hint = Div()
 
     return Div(
         Div(
@@ -201,7 +195,7 @@ def ScenarioOverlay():
         id="scenario-overlay",
         hx_swap_oob="true",
         style=(
-            f"position:fixed; top:72px; left:50%; transform:translateX(-50%);"
+            f"position:fixed; top:auto; bottom:80px; left:50%; transform:translateX(-50%);"
             f"background:#0d0d0dee; border:1.5px solid {border_color}; border-radius:12px;"
             f"padding:16px 28px; z-index:9999; text-align:center;"
             f"backdrop-filter:blur(8px); min-width:360px; max-width:520px;"
@@ -918,11 +912,14 @@ def AppLayout(active_tab="Main"):
         def ToggleBlock(label, is_on, state_key):
             t_cls = "toggle-on" if is_on else "toggle-off"
             d_cls = "toggle-dot-on" if is_on else "toggle-dot-off"
-            # Highlight the two drop-weight switches when scenario is active
-            highlight = (
-                state_key in ("em_drop_weight_p1_sc", "em_drop_weight_p2_pc")
-                and sc.active
-            )
+            highlight = False
+            if sc.active:
+                if sc.mission_name == "DROP WEIGHT — EMERGENCY ASCENT" and state_key in ("em_drop_weight_p1_sc", "em_drop_weight_p2_pc"):
+                    highlight = True
+                elif sc.mission_name == "SEQUENTIAL DROP DRILL" and state_key in ("port_side_sdw_1", "port_side_sdw_2"):
+                    highlight = True
+                elif sc.mission_name == "MANEUVERING PHASE" and state_key in ("ej_manipulator_1", "ej_manipulator_2", "ej_manipulator_3", "ej_manipulator_4"):
+                    highlight = True
             border = "border:2px solid #facc15; border-radius:4px;" if highlight else ""
             return Div(
                 Span(label, style="font-size: 12px; font-weight: 500;"),
@@ -939,57 +936,21 @@ def AppLayout(active_tab="Main"):
             )
 
         # ── Scenario launcher banner (sits above the switch grid) ─────────────
-        is_em_active = sc.active and sc.mission_name == "DROP WEIGHT — EMERGENCY ASCENT"
-        is_em_success = sc.success if sc.mission_name == "DROP WEIGHT — EMERGENCY ASCENT" else None
-        em_border = "#facc15" if is_em_active else ("#00ff88" if is_em_success is True else ("#ff4444" if is_em_success is False else "#333"))
-        em_label  = "🟡 SCENARIO ACTIVE" if is_em_active else ("✅ MISSION COMPLETE" if is_em_success is True else ("❌ MISSION FAILED" if is_em_success is False else "▶  START SCENARIO"))
-        scenario_banner = Div(
-            Div(
-                Span("DROP WEIGHT DRILL", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
-                Span(em_label, style=f"font-size:12px; color:{em_border}; margin-left:12px;"),
-                style="display:flex; align-items:center; flex:1;"
-            ),
-            Div(
-                Span(
-                    "START" if not is_em_active else "RUNNING…",
-                    hx_post="/api/scenario/drop_weight/start",
-                    hx_swap="none",
-                    style=(
-                        "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
-                        "color:#facc15; padding:5px 14px; border-radius:5px; font-size:12px;"
-                        "font-weight:700; margin-right:8px; pointer-events:" +
-                        ("none; opacity:0.4;" if sc.active else "auto;")
-                    ),
-                ),
-                Span(
-                    "RESET",
-                    hx_post="/api/scenario/drop_weight/reset",
-                    hx_swap="none",
-                    style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
-                ),
-                style="display:flex; align-items:center;"
-            ),
-            style=(
-                f"display:flex; justify-content:space-between; align-items:center;"
-                f"padding:10px 16px; background:#111; border:1px solid {em_border};"
-                f"border-radius:8px; margin-bottom:12px;"
-            )
-        )
 
-        is_seq_active = sc.active and sc.mission_name == "SEQUENTIAL DROP DRILL"
-        is_seq_success = sc.success if sc.mission_name == "SEQUENTIAL DROP DRILL" else None
-        seq_border = "#facc15" if is_seq_active else ("#00ff88" if is_seq_success is True else ("#ff4444" if is_seq_success is False else "#333"))
-        seq_label  = "🟡 SCENARIO ACTIVE" if is_seq_active else ("✅ MISSION COMPLETE" if is_seq_success is True else ("❌ MISSION FAILED" if is_seq_success is False else "▶  START SCENARIO"))
-        seq_scenario_banner = Div(
+        man_is_active = sc.active and sc.mission_name == "MANEUVERING PHASE"
+        man_is_success = sc.success if sc.mission_name == "MANEUVERING PHASE" else None
+        man_border = "#facc15" if man_is_active else ("#00ff88" if man_is_success is True else ("#ff4444" if man_is_success is False else "#333"))
+        man_label  = "🟡 SCENARIO ACTIVE" if man_is_active else ("✅ MISSION COMPLETE" if man_is_success is True else ("❌ MISSION FAILED" if man_is_success is False else "▶  START SCENARIO"))
+        man_scenario_banner = Div(
             Div(
-                Span("SEQUENTIAL DROP DRILL", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
-                Span(seq_label, style=f"font-size:12px; color:{seq_border}; margin-left:12px;"),
+                Span("MANEUVERING PHASE", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
+                Span(man_label, style=f"font-size:12px; color:{man_border}; margin-left:12px;"),
                 style="display:flex; align-items:center; flex:1;"
             ),
             Div(
                 Span(
-                    "START" if not is_seq_active else "RUNNING…",
-                    hx_post="/api/scenario/sequential_drop/start",
+                    "START" if not man_is_active else "RUNNING…",
+                    hx_post="/api/scenario/maneuvering/start",
                     hx_swap="none",
                     style=(
                         "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
@@ -1000,7 +961,7 @@ def AppLayout(active_tab="Main"):
                 ),
                 Span(
                     "RESET",
-                    hx_post="/api/scenario/sequential_drop/reset",
+                    hx_post="/api/scenario/maneuvering/reset",
                     hx_swap="none",
                     style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
                 ),
@@ -1008,7 +969,7 @@ def AppLayout(active_tab="Main"):
             ),
             style=(
                 f"display:flex; justify-content:space-between; align-items:center;"
-                f"padding:10px 16px; background:#111; border:1px solid {seq_border};"
+                f"padding:10px 16px; background:#111; border:1px solid {man_border};"
                 f"border-radius:8px; margin-bottom:12px;"
             )
         )
@@ -1097,8 +1058,7 @@ def AppLayout(active_tab="Main"):
         )
 
         switches_panel = Div(
-            scenario_banner,
-            seq_scenario_banner,
+            man_scenario_banner,
             Div(col1, col2, col3, col4, col5, style="display:grid; grid-template-columns: repeat(5, 1fr); gap: 15px; overflow-y: auto; flex: 1;"),
             cls="mcc-panel",
             style="display: flex; flex-direction: column; padding:15px;"
@@ -1148,7 +1108,7 @@ async def get(dive_num: int = 1):
 
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_sequential_drop_scenario(app_state, broadcast, ScenarioOverlay)
+            run_maneuvering_phase_scenario(app_state, broadcast, ScenarioOverlay)
         )
 
     return Title("MATSYA 6000 View"), Div(
@@ -1357,38 +1317,19 @@ async def simulate_data():
 # ─────────────────────────────────────────────────────────────────────────────
 # Scenario API routes
 # ─────────────────────────────────────────────────────────────────────────────
-@rt("/api/scenario/drop_weight/start", methods=["POST"])
-async def scenario_start():
+# ─────────────────────────────────────────────────────────────────────────────
+@rt("/api/scenario/maneuvering/start", methods=["POST"])
+async def man_scenario_start():
     global scenario_task
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_drop_weight_scenario(app_state, broadcast, ScenarioOverlay)
+            run_maneuvering_phase_scenario(app_state, broadcast, ScenarioOverlay)
         )
     return ""
 
 
-@rt("/api/scenario/drop_weight/reset", methods=["POST"])
-async def scenario_reset():
-    global scenario_task
-    if scenario_task and not scenario_task.done():
-        scenario_task.cancel()
-    reset_scenario(scenario_state)
-    await broadcast(ScenarioOverlay())
-    await broadcast_all_layouts()
-    return ""
-
-@rt("/api/scenario/sequential_drop/start", methods=["POST"])
-async def seq_scenario_start():
-    global scenario_task
-    if scenario_task is None or scenario_task.done():
-        scenario_task = asyncio.create_task(
-            run_sequential_drop_scenario(app_state, broadcast, ScenarioOverlay)
-        )
-    return ""
-
-
-@rt("/api/scenario/sequential_drop/reset", methods=["POST"])
-async def seq_scenario_reset():
+@rt("/api/scenario/maneuvering/reset", methods=["POST"])
+async def man_scenario_reset():
     global scenario_task
     if scenario_task and not scenario_task.done():
         scenario_task.cancel()
@@ -1452,8 +1393,6 @@ async def generic_toggle(state_path: str):
     val = getattr(obj, parts[-1])
     setattr(obj, parts[-1], not val)
 
-    # If the scenario is active and a drop-weight switch was just toggled,
-    # the run_drop_weight_scenario loop will detect it on its next tick (≤1s).
     await broadcast_all_layouts()
     return ""
 
