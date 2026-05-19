@@ -59,8 +59,7 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
 )
-from scenario import scenario_state, reset_scenario,run_carbondioxide_increase_scenario
-
+from scenario import scenario_state, reset_scenario, run_thruster_mismatch_scenario
 import asyncio
 import random
 import os
@@ -195,10 +194,10 @@ def ScenarioOverlay():
         id="scenario-overlay",
         hx_swap_oob="true",
         style=(
-            f"position:fixed; top:auto; bottom:80px; left:50%; transform:translateX(-50%);"
+            f"position:fixed; top:110px; right:24px; left:auto; transform:none;"
             f"background:#0d0d0dee; border:1.5px solid {border_color}; border-radius:12px;"
             f"padding:16px 28px; z-index:9999; text-align:center;"
-            f"backdrop-filter:blur(8px); min-width:360px; max-width:520px;"
+            f"backdrop-filter:blur(8px); min-width:320px; max-width:420px;"
             f"box-shadow:0 0 28px {glow_color}; pointer-events:none;"
         ),
     )
@@ -914,13 +913,11 @@ def AppLayout(active_tab="Main"):
             d_cls = "toggle-dot-on" if is_on else "toggle-dot-off"
             highlight = False
             if sc.active:
-                if sc.mission_name == "Emergency Drop weights" and state_key in (
-                    "LED_P1", "LED_S1", "HD_SDI_P1",
-                    "ej_manipulator_1", "ej_manipulator_2", "ej_manipulator_3", "ej_manipulator_4",
-                    "em_drop_weight_p1_sc", "em_drop_weight_p2_pc",
-                ):
+                if sc.mission_name == "DROP WEIGHT — EMERGENCY ASCENT" and state_key in ("em_drop_weight_p1_sc", "em_drop_weight_p2_pc"):
                     highlight = True
-                elif sc.mission_name == "CO2 Scrubber Failure" and state_key == "co2_scrubber_p":
+                elif sc.mission_name == "SEQUENTIAL DROP DRILL" and state_key in ("port_side_sdw_1", "port_side_sdw_2"):
+                    highlight = True
+                elif sc.mission_name == "THRUSTER VECTOR MISMATCH" and state_key in ("lateral_trim", "heading_trim"):
                     highlight = True
             border = "border:2px solid #facc15; border-radius:4px;" if highlight else ""
             return Div(
@@ -939,34 +936,31 @@ def AppLayout(active_tab="Main"):
 
         # ── Scenario launcher banner (sits above the switch grid) ─────────────
 
-
-
-        # ── CO2 Scrubber Failure scenario banner ──────────────────────────────
-        co2_is_active  = sc.active and sc.mission_name == "CO2 Scrubber Failure"
-        co2_is_success = sc.success if sc.mission_name == "CO2 Scrubber Failure" else None
-        co2_border = "#facc15" if co2_is_active else ("#00ff88" if co2_is_success is True else ("#ff4444" if co2_is_success is False else "#333"))
-        co2_label  = "🟡 SCENARIO ACTIVE" if co2_is_active else ("✅ MISSION COMPLETE" if co2_is_success is True else ("❌ MISSION FAILED" if co2_is_success is False else "▶  START SCENARIO"))
-        co2_scenario_banner = Div(
+        man_is_active = sc.active and sc.mission_name == "THRUSTER VECTOR MISMATCH"
+        man_is_success = sc.success if sc.mission_name == "THRUSTER VECTOR MISMATCH" else None
+        man_border = "#facc15" if man_is_active else ("#00ff88" if man_is_success is True else ("#ff4444" if man_is_success is False else "#333"))
+        man_label  = "🟡 SCENARIO ACTIVE" if man_is_active else ("✅ MISSION COMPLETE" if man_is_success is True else ("❌ MISSION FAILED" if man_is_success is False else "▶  START SCENARIO"))
+        man_scenario_banner = Div(
             Div(
-                Span("CO2 Scrubber Failure", style="font-weight:800; color:#f87171; font-size:13px; letter-spacing:1px;"),
-                Span(co2_label, style=f"font-size:12px; color:{co2_border}; margin-left:12px;"),
+                Span("Thruster Vector Mismatch", style="font-weight:800; color:#fb923c; font-size:13px; letter-spacing:1px;"),
+                Span(man_label, style=f"font-size:12px; color:{man_border}; margin-left:12px;"),
                 style="display:flex; align-items:center; flex:1;"
             ),
             Div(
                 Span(
-                    "START" if not co2_is_active else "RUNNING…",
-                    hx_post="/api/scenario/co2/start",
+                    "START" if not man_is_active else "RUNNING…",
+                    hx_post="/api/scenario/thruster/start",
                     hx_swap="none",
                     style=(
-                        "cursor:pointer; background:#1a1a1a; border:1px solid #f87171;"
-                        "color:#f87171; padding:5px 14px; border-radius:5px; font-size:12px;"
+                        "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
+                        "color:#facc15; padding:5px 14px; border-radius:5px; font-size:12px;"
                         "font-weight:700; margin-right:8px; pointer-events:" +
                         ("none; opacity:0.4;" if sc.active else "auto;")
                     ),
                 ),
                 Span(
                     "RESET",
-                    hx_post="/api/scenario/co2/reset",
+                    hx_post="/api/scenario/thruster/reset",
                     hx_swap="none",
                     style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
                 ),
@@ -974,7 +968,7 @@ def AppLayout(active_tab="Main"):
             ),
             style=(
                 f"display:flex; justify-content:space-between; align-items:center;"
-                f"padding:10px 16px; background:#111; border:1px solid {co2_border};"
+                f"padding:10px 16px; background:#111; border:1px solid {man_border};"
                 f"border-radius:8px; margin-bottom:12px;"
             )
         )
@@ -1063,7 +1057,7 @@ def AppLayout(active_tab="Main"):
         )
 
         switches_panel = Div(
-            co2_scenario_banner,
+            man_scenario_banner,
             Div(col1, col2, col3, col4, col5, style="display:grid; grid-template-columns: repeat(5, 1fr); gap: 15px; overflow-y: auto; flex: 1;"),
             cls="mcc-panel",
             style="display: flex; flex-direction: column; padding:15px;"
@@ -1113,7 +1107,7 @@ async def get(dive_num: int = 1):
 
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_carbondioxide_increase_scenario(app_state, broadcast, ScenarioOverlay)
+            run_thruster_mismatch_scenario(app_state, broadcast, ScenarioOverlay)
         )
 
     return Title("MATSYA 6000 View"), Div(
@@ -1323,19 +1317,18 @@ async def simulate_data():
 # Scenario API routes
 # ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-
-@rt("/api/scenario/co2/start", methods=["POST"])
-async def co2_scenario_start():
+@rt("/api/scenario/thruster/start", methods=["POST"])
+async def man_scenario_start():
     global scenario_task
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_carbondioxide_increase_scenario(app_state, broadcast, ScenarioOverlay)
+            run_thruster_mismatch_scenario(app_state, broadcast, ScenarioOverlay)
         )
     return ""
 
 
-@rt("/api/scenario/co2/reset", methods=["POST"])
-async def co2_scenario_reset():
+@rt("/api/scenario/thruster/reset", methods=["POST"])
+async def man_scenario_reset():
     global scenario_task
     if scenario_task and not scenario_task.done():
         scenario_task.cancel()

@@ -1,4 +1,5 @@
 import asyncio
+import random
 from dataclasses import dataclass
 from typing import Optional
 
@@ -22,6 +23,11 @@ class ScenarioState:
 
 
 scenario_state = ScenarioState()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
 def reset_scenario(sc: ScenarioState) -> None:
     """Return scenario to idle without touching app_state."""
     sc.active = False
@@ -32,52 +38,60 @@ def reset_scenario(sc: ScenarioState) -> None:
     sc.blink = False
     sc.current_stage = 0
     sc.timer_remaining = sc.timer_total
-# CO2 Scrubber Failure Scenario
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-async def run_carbondioxide_increase_scenario(app_state, broadcast_fn, ScenarioOverlay_fn):
+# Thruster Vector Mismatch Scenario
+# ─────────────────────────────────────────────────────────────────────────────
+async def run_thruster_mismatch_scenario(app_state, broadcast_fn, ScenarioOverlay_fn):
     """
-    Scenario: CO2 SCRUBBER FAILURE
+    Scenario: THRUSTER VECTOR MISMATCH
     ─────────────────────────────────────────
-    CO2 rises from 800 → 2000 ppm over 60s on both HSSS panels and sidebar.
-    Stage 1: 10s countdown, then alarm fires.
-    Stage 2: pilot enables co2_scrubber_p switch.
-    After switch: CO2 decreases from current value back to 800 ppm over 30s.
+    T1, T3, T5, T7 RPMs randomised to simulate desynchronisation.
+    Stage 1: 8s countdown → alarm fires
+    Stage 2: pilot enables T1 power + T1 enable  → stage 3
+    Stage 3: pilot enables T3 power + T3 enable  → stage 4
+    Stage 4: pilot enables T5 power + T5 enable  → stage 5
+    Stage 5: pilot enables T7 power + T7 enable  → stage 6
+    Stage 6: pilot enables lateral_trim AND heading_trim → success
+    Recovery: RPMs ramp back to 0 over 10 ticks.
     """
     sc = scenario_state
+    pd = app_state.propulsion_detail
+    sb = app_state.sidebar
     sw = app_state.switches.state
 
     # ── initialise ────────────────────────────────────────────────────────────
     sc.active = True
     sc.success = None
-    sc.mission_name = "CO2 Scrubber Failure"
+    sc.mission_name = "THRUSTER VECTOR MISMATCH"
     sc.timer_total = 60
     sc.timer_remaining = 60
     sc.result_message = ""
-    sc.feedback_msg = "CO2 levels rising..."
+    sc.feedback_msg = "Thrusters desynchronised. Stand by..."
     sc.current_stage = 1
 
-    # Reset switch
-    sw.co2_scrubber_p = False
+    # Reset switches
+    pd.t1.power = False;  pd.t1.enable = False
+    pd.t3.power = False;  pd.t3.enable = False
+    pd.t5.power = False;  pd.t5.enable = False
+    pd.t7.power = False;  pd.t7.enable = False
+    sb.thrusters_enable = False
+    sw.lateral_trim = False
+    sw.heading_trim = False
 
-    # CO2 rises 800 → 2000 ppm over 60 ticks (~20 ppm/tick)
-    CO2_start = 800.0
-    CO2_peak  = 2000.0
-    CO2_step  = (CO2_peak - CO2_start) / sc.timer_total
+    # Randomise RPMs to show mismatch immediately
+    app_state.propulsion.t1_rpm = round(random.uniform(300, 1000), 1)
+    app_state.propulsion.t3_rpm = round(random.uniform(300, 1000), 1)
+    app_state.propulsion.t5_rpm = round(random.uniform(300, 1000), 1)
+    app_state.propulsion.t7_rpm = round(random.uniform(300, 1000), 1)
 
-    alarm_timer = 10  # alarm fires after 10s in stage 1
+    alarm_timer = 8  # alarm fires 8 ticks into stage 1
 
-    # ── tick loop (rising phase) ───────────────────────────────────────────────
-    for elapsed in range(sc.timer_total):
+    # ── tick loop ─────────────────────────────────────────────────────────────
+    for elapsed in range(1, sc.timer_total + 1):  # start at 1 so timer counts down visibly
         if not sc.active:
             break
-
-        current_co2 = round(CO2_start + CO2_step * elapsed, 1)
-
-        # Update HSSS port and starboard CO2
-        app_state.hsss.p.co2.value = current_co2
-        app_state.hsss.s.co2.value = current_co2
-        # Update sidebar environment CO2
-        app_state.environment.co2.value = current_co2
 
         sc.timer_remaining = sc.timer_total - elapsed
         sc.blink = not sc.blink
@@ -85,54 +99,72 @@ async def run_carbondioxide_increase_scenario(app_state, broadcast_fn, ScenarioO
         if sc.current_stage == 1:
             alarm_timer -= 1
             if alarm_timer <= 0:
-                sc.feedback_msg = "ALARM: CO2 levels critical! Enable CO2 Scrubber."
+                sc.feedback_msg = "ALARM: Thruster vector mismatch!"
                 sc.current_stage = 2
 
         elif sc.current_stage == 2:
-            if sw.co2_scrubber_p:
-                sc.feedback_msg = "CO2 Scrubber activated. CO2 decreasing..."
+            if pd.t1.power and pd.t1.enable:
                 sc.current_stage = 3
-                break  # exit rising loop, enter recovery loop
+                sc.feedback_msg = "T1 restored."
+
+        elif sc.current_stage == 3:
+            if pd.t3.power and pd.t3.enable:
+                sc.current_stage = 4
+                sc.feedback_msg = "T3 restored."
+
+        elif sc.current_stage == 4:
+            if pd.t5.power and pd.t5.enable:
+                sc.current_stage = 5
+                sc.feedback_msg = "T5 restored."
+
+        elif sc.current_stage == 5:
+            if pd.t7.power and pd.t7.enable:
+                sc.current_stage = 6
+                sc.feedback_msg = "T7 restored."
+
+        elif sc.current_stage == 6:
+            if sw.lateral_trim and sw.heading_trim:
+                sc.feedback_msg = "Trims set. Synchronising thrusters..."
+                sc.current_stage = 7
+                await broadcast_fn(ScenarioOverlay_fn())
+                break  # → recovery loop
 
         await broadcast_fn(ScenarioOverlay_fn())
         await asyncio.sleep(1.0)
 
-    # ── check if pilot never responded ────────────────────────────────────────
-    if sc.active and sc.success is None and not sw.co2_scrubber_p:
+    # ── timeout ───────────────────────────────────────────────────────────────
+    if sc.active and sc.success is None and sc.current_stage != 7:
         sc.success = False
         sc.active = False
-        sc.result_message = "CO2 levels exceeded safe limits. Mission failed."
+        sc.result_message = "Time expired before mission completion. Mission failed."
         await broadcast_fn(ScenarioOverlay_fn())
         await asyncio.sleep(6)
         reset_scenario(sc)
         await broadcast_fn(ScenarioOverlay_fn())
         return
 
-    # ── recovery loop: CO2 decreases back to 800 ppm over 30 ticks ───────────
+    # ── recovery: RPMs ramp to 0 over 10 ticks ────────────────────────────────
     recovery_ticks = 10
-    co2_at_recovery = app_state.hsss.p.co2.value
-    CO2_recovery_step = (co2_at_recovery - CO2_start) / recovery_ticks
+    t1_start = app_state.propulsion.t1_rpm
+    t3_start = app_state.propulsion.t3_rpm
+    t5_start = app_state.propulsion.t5_rpm
+    t7_start = app_state.propulsion.t7_rpm
 
-    for tick in range(recovery_ticks):
-        if not sc.active:
-            break
-
-        recovered_co2 = round(co2_at_recovery - CO2_recovery_step * tick, 1)
-        app_state.hsss.p.co2.value   = recovered_co2
-        app_state.hsss.s.co2.value   = recovered_co2
-        app_state.environment.co2.value = recovered_co2
-
+    for tick in range(recovery_ticks + 1):
+        frac = tick / recovery_ticks
+        app_state.propulsion.t1_rpm = round(t1_start * (1 - frac), 1)
+        app_state.propulsion.t3_rpm = round(t3_start * (1 - frac), 1)
+        app_state.propulsion.t5_rpm = round(t5_start * (1 - frac), 1)
+        app_state.propulsion.t7_rpm = round(t7_start * (1 - frac), 1)
         sc.timer_remaining = recovery_ticks - tick
         sc.blink = not sc.blink
-
         await broadcast_fn(ScenarioOverlay_fn())
         await asyncio.sleep(1.0)
 
     # ── success ───────────────────────────────────────────────────────────────
     sc.success = True
     sc.active = False
-    sc.result_message = "CO2 levels normalised. Mission complete."
-
+    sc.result_message = "Thrusters synchronised. Mission complete."
     await broadcast_fn(ScenarioOverlay_fn())
     await asyncio.sleep(6)
     reset_scenario(sc)
