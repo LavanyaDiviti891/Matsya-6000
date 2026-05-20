@@ -59,7 +59,7 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
 )
-from scenario import scenario_state, reset_scenario, run_emergency_buoy_scenario
+from scenario import scenario_state, reset_scenario, run_sample_collection_scenario
 import asyncio
 import random
 import os
@@ -922,9 +922,9 @@ def AppLayout(active_tab="Main"):
             d_cls = "toggle-dot-on" if is_on else "toggle-dot-off"
             highlight = False
             if sc.active:
-                if sc.mission_name == "EMERGENCY BUOY DEPLOYMENT" and state_key in ("surface_ins", "heading_trim"):
-                    highlight = True
-                elif sc.mission_name == "EMERGENCY BUOY DEPLOYMENT" and state_key in ("em_buoy_release_1", "em_buoy_release_2"):
+                if sc.mission_name == "SAMPLE COLLECTION" and state_key in (
+                    "joystick_enable", "ej_manipulator_1", "ej_manipulator_2", "ej_sampling_basket_1",
+                ):
                     highlight = True
             border = "border:2px solid #facc15; border-radius:4px;" if highlight else ""
             return Div(
@@ -943,20 +943,20 @@ def AppLayout(active_tab="Main"):
 
         # ── Scenario launcher banner (sits above the switch grid) ─────────────
 
-        man_is_active = sc.active and sc.mission_name == "EMERGENCY BUOY DEPLOYMENT"
-        man_is_success = sc.success if sc.mission_name == "EMERGENCY BUOY DEPLOYMENT" else None
+        man_is_active = sc.active and sc.mission_name == "SAMPLE COLLECTION"
+        man_is_success = sc.success if sc.mission_name == "SAMPLE COLLECTION" else None
         man_border = "#facc15" if man_is_active else ("#00ff88" if man_is_success is True else ("#ff4444" if man_is_success is False else "#333"))
         man_label  = "🟡 SCENARIO ACTIVE" if man_is_active else ("✅ MISSION COMPLETE" if man_is_success is True else ("❌ MISSION FAILED" if man_is_success is False else "▶  START SCENARIO"))
         man_scenario_banner = Div(
             Div(
-                Span("Emergency Buoy Deployment", style="font-weight:800; color:#fb923c; font-size:13px; letter-spacing:1px;"),
+                Span("Sample Collection", style="font-weight:800; color:#34d399; font-size:13px; letter-spacing:1px;"),
                 Span(man_label, style=f"font-size:12px; color:{man_border}; margin-left:12px;"),
                 style="display:flex; align-items:center; flex:1;"
             ),
             Div(
                 Span(
                     "START" if not man_is_active else "RUNNING…",
-                    hx_post="/api/scenario/buoy/start",
+                    hx_post="/api/scenario/sample/start",
                     hx_swap="none",
                     style=(
                         "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
@@ -967,7 +967,7 @@ def AppLayout(active_tab="Main"):
                 ),
                 Span(
                     "RESET",
-                    hx_post="/api/scenario/buoy/reset",
+                    hx_post="/api/scenario/sample/reset",
                     hx_swap="none",
                     style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
                 ),
@@ -1113,7 +1113,7 @@ async def get(dive_num: int = 1):
 
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_emergency_buoy_scenario(app_state, broadcast, ScenarioOverlay)
+            run_sample_collection_scenario(app_state, broadcast, ScenarioOverlay)
         )
 
     return Title("MATSYA 6000 View"), Div(
@@ -1323,17 +1323,17 @@ async def simulate_data():
 # Scenario API routes
 # ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-@rt("/api/scenario/buoy/start", methods=["POST"])
+@rt("/api/scenario/sample/start", methods=["POST"])
 async def man_scenario_start():
     global scenario_task
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_emergency_buoy_scenario(app_state, broadcast, ScenarioOverlay)
+            run_sample_collection_scenario(app_state, broadcast, ScenarioOverlay)
         )
     return ""
 
 
-@rt("/api/scenario/buoy/reset", methods=["POST"])
+@rt("/api/scenario/sample/reset", methods=["POST"])
 async def man_scenario_reset():
     global scenario_task
     if scenario_task and not scenario_task.done():

@@ -41,52 +41,47 @@ def reset_scenario(sc: ScenarioState) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Thruster Vector Mismatch Scenario
+# Sample Collection Scenario
 # ─────────────────────────────────────────────────────────────────────────────
-async def run_emergency_buoy_scenario(app_state, broadcast_fn, ScenarioOverlay_fn):
+async def run_sample_collection_scenario(app_state, broadcast_fn, ScenarioOverlay_fn):
     """
-    Scenario: EMERGENCY BUOY DEPLOYEMENT
-    
+    Scenario: SAMPLE COLLECTION
+    Stage 1: pilot enables all LEDs (P1-P3, S1-S3)
+    Stage 2: pilot enables HD cameras and SDI outputs
+    Stage 3: pilot enables joystick
+    Stage 4: pilot enables Manipulator_1 or Manipulator_2
+    Stage 5: pilot triggers ej_sampling_basket_1 → success
     """
     sc = scenario_state
-    pd = app_state.propulsion_detail
-    sb = app_state.sidebar
+    img = app_state.imaging
     sw = app_state.switches.state
 
     # ── initialise ────────────────────────────────────────────────────────────
     sc.active = True
     sc.success = None
-    sc.mission_name = "EMERGENCY BUOY DEPLOYMENT"
+    sc.mission_name = "SAMPLE COLLECTION"
     sc.timer_total = 60
     sc.timer_remaining = 60
     sc.result_message = ""
-    sc.feedback_msg = "NAVIGATION INSTABILITY DETECTED"
+    sc.feedback_msg = "Sea bed reached. Enable all LEDs."
     sc.current_stage = 1
 
-    # Reset switches
-    pd.t1.power = False;  pd.t1.enable = False
-    pd.t3.power = False;  pd.t3.enable = False
-    pd.t5.power = False;  pd.t5.enable = False
-    pd.t7.power = False;  pd.t7.enable = False
-    sb.thrusters_enable = False
-    
-    sw.heading_trim = False
-    sw.surface_ins = False
-    sw.em_buoy_release_1 = False
-    sw.em_buoy_release_2 = False
+    # Reset imaging switches
+    img.led_p1.power = False;  img.led_p2.power = False;  img.led_p3.power = False
+    img.led_s1.power = False;  img.led_s2.power = False;  img.led_s3.power = False
+    img.hd_camera_p  = False;  img.hd_camera_s  = False
+    img.hd_sdi_p1    = False;  img.hd_sdi_p2    = False
+    img.hd_sdi_s1    = False;  img.hd_sdi_s2    = False
+    sw.joystick_enable      = False
+    sw.ej_manipulator_1     = False
+    sw.ej_manipulator_2     = False
+    sw.ej_sampling_basket_1 = False
 
-    # Randomise RPMs to show mismatch immediately
-    app_state.imu.pitch.value = round(random.uniform(-15, 15), 1)
-    app_state.imu.roll.value = round(random.uniform(-20, 20), 1)
-    app_state.propulsion.t1_rpm = round(random.uniform(300, 1000), 1)
-    app_state.propulsion.t3_rpm = round(random.uniform(300, 1000), 1)
-    app_state.propulsion.t5_rpm = round(random.uniform(300, 1000), 1)
-    app_state.propulsion.t7_rpm = round(random.uniform(300, 1000), 1)
-
-    alarm_timer = 8  # alarm fires 8 ticks into stage 1
+    # Set depth to seabed value
+    app_state.header.depth.value = round(random.uniform(5700, 6000), 1)
 
     # ── tick loop ─────────────────────────────────────────────────────────────
-    for elapsed in range(1, sc.timer_total + 1):  # start at 1 so timer counts down visibly
+    for elapsed in range(1, sc.timer_total + 1):
         if not sc.active:
             break
 
@@ -94,35 +89,42 @@ async def run_emergency_buoy_scenario(app_state, broadcast_fn, ScenarioOverlay_f
         sc.blink = not sc.blink
 
         if sc.current_stage == 1:
-            alarm_timer -= 1
-            if alarm_timer <= 0:
-                sc.feedback_msg = "ALARM: NAVIGATION INSTABILITY DETECTED"
+            # All 6 LEDs must be on
+            if (img.led_p1.power and img.led_p2.power and img.led_p3.power and
+                    img.led_s1.power and img.led_s2.power and img.led_s3.power):
                 sc.current_stage = 2
+                sc.feedback_msg = "LEDs on. Enable HD cameras and SDI outputs."
 
         elif sc.current_stage == 2:
-            if sw.surface_ins and sw.heading_trim:
+            # Both cameras and SDI outputs on
+            if (img.hd_camera_p and img.hd_camera_s and
+                    img.hd_sdi_p1 and img.hd_sdi_p2 and
+                    img.hd_sdi_s1 and img.hd_sdi_s2):
                 sc.current_stage = 3
-                sc.feedback_msg = "PROPULSION RESPONSE DEGRADED"
+                sc.feedback_msg = "Cameras ready. Enable joystick."
 
-        
         elif sc.current_stage == 3:
-            if pd.t3.power and pd.t3.enable and pd.t5.power and pd.t5.enable and pd.t7.power and pd.t7.enable and pd.t1.power and pd.t1.enable :
+            if sw.joystick_enable:
                 sc.current_stage = 4
-                sc.feedback_msg = "Recovery failed, Deploy BUOY"
+                sc.feedback_msg = "Joystick enabled. Manipulator entangled."
 
         elif sc.current_stage == 4:
-            if sw.em_buoy_release_1 or sw.em_buoy_release_2:
+            if sw.ej_manipulator_1 or sw.ej_manipulator_2:
                 sc.current_stage = 5
-                sc.feedback_msg = "Emergency Buoy Released"
+                sc.feedback_msg = "Sample basket entangled"
 
+        elif sc.current_stage == 5:
+            if sw.ej_sampling_basket_1:
+                sc.current_stage = 6
+                sc.feedback_msg = "Sample basket released!"
                 await broadcast_fn(ScenarioOverlay_fn())
-                break  # → recovery loop
+                break
 
         await broadcast_fn(ScenarioOverlay_fn())
         await asyncio.sleep(1.0)
 
     # ── timeout ───────────────────────────────────────────────────────────────
-    if sc.active and sc.success is None and sc.current_stage != 5:
+    if sc.active and sc.success is None and sc.current_stage != 6:
         sc.success = False
         sc.active = False
         sc.result_message = "Time expired before mission completion. Mission failed."
@@ -132,11 +134,10 @@ async def run_emergency_buoy_scenario(app_state, broadcast_fn, ScenarioOverlay_f
         await broadcast_fn(ScenarioOverlay_fn())
         return
 
-   
     # ── success ───────────────────────────────────────────────────────────────
     sc.success = True
     sc.active = False
-    sc.result_message = "Emergency Buoy Released, Mission complete."
+    sc.result_message = "Sample collected. Mission complete."
     await broadcast_fn(ScenarioOverlay_fn())
     await asyncio.sleep(6)
     reset_scenario(sc)
