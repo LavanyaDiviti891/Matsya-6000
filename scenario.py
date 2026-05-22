@@ -1,9 +1,11 @@
 import asyncio
-import random
 from dataclasses import dataclass
 from typing import Optional
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Scenario State
+# ─────────────────────────────────────────────────────────────────────────────
 @dataclass
 class ScenarioState:
     active: bool = False
@@ -33,103 +35,88 @@ def reset_scenario(sc: ScenarioState) -> None:
     sc.timer_remaining = sc.timer_total
 
 
-async def run_loading_ballasttank_scenario(app_state, broadcast_fn, ScenarioOverlay_fn):
+# ─────────────────────────────────────────────────────────────────────────────
+# Scenario: POWERING MATSYA
+# broadcast_fn = broadcast_all_layouts (a coroutine from main.py)
+# ScenarioOverlay_fn is unused — overlay is embedded in AppLayout directly
+# ─────────────────────────────────────────────────────────────────────────────
+async def run_powering_matsya_scenario(app_state, broadcast_fn, ScenarioOverlay_fn=None):
     """
-    Scenario: LOADING BALLAST TANK
-    Stage 1: pilot enables sw.dive_in
-    Stage 2: pilot enables sw.vbt_set_value AND sw.freeboard_p
-    Stage 3: pilot clicks VBS HPU button → b.vbs.hpu_enable = True
-    Stage 4: tank auto-fills +5% per tick to 100% → success
+    Stage 1: Turn ON ab_p + e_batts
+    Stage 2: Turn ON mcb + ab_p_bms + ab_b
+    Stage 3: Turn ON mb_p_1 through mb_p_5
+    Stage 4: Turn ON md_pde  →  Mission complete
     """
     sc = scenario_state
     sw = app_state.switches.state
 
+    # ── Initialise ────────────────────────────────────────────────────────────
     sc.active          = True
     sc.success         = None
-    sc.mission_name    = "LOADING BALLAST TANK"
+    sc.mission_name    = "POWERING MATSYA"
     sc.timer_total     = 60
     sc.timer_remaining = 60
     sc.result_message  = ""
-    sc.feedback_msg    = "Descend Phase Started. Enable Dive In."
+    sc.feedback_msg    = "POWER THE VEHICLE: Turn ON AB_P and E_BATTS"
     sc.current_stage   = 1
 
-    # Reset only confirmed sw fields (these exist — verified in main.py lines 989-992)
-    sw.dive_in         = False
-    sw.vbt_set_value   = False
-    sw.freeboard_p     = False
+    # Reset relevant switch states
+    sw.ab_p     = False
+    sw.e_batts  = False
+    sw.mcb      = False
+    sw.ab_p_bms = False
+    sw.ab_b     = False
+    sw.mb_p_1   = False
+    sw.mb_p_2   = False
+    sw.mb_p_3   = False
+    sw.mb_p_4   = False
+    sw.mb_p_5   = False
+    sw.mb_p_pde = False
+    sw.md_pde   = False
 
-    # VBS fields — wrap in try/except to avoid silent crash if model differs
-    b = app_state.ballast
-    try:
-        b.vbs.hpu_enable = False
-        b.vbs.tank_level = 0
-    except AttributeError as e:
-        print(f"[SCENARIO] Warning: could not reset VBS fields: {e}")
+    await broadcast_fn()
 
-    depth_start    = 5.0
-    depth_step     = (20.0 - 5.0) / 60   # +0.25m per tick
-    altitude_start = 20.0
-    altitude_step  = (20.0 - 5.0) / 60   # -0.25m per tick
-
-    for elapsed in range(1, sc.timer_total + 1):
-        if not sc.active:
-            break
-
-        try:
-            app_state.header.depth.value    = round(depth_start    + depth_step    * elapsed, 1)
-            app_state.header.altitude.value = round(altitude_start - altitude_step * elapsed, 1)
-        except AttributeError as e:
-            print(f"[SCENARIO] Warning: header depth/altitude: {e}")
-
-        sc.timer_remaining = sc.timer_total - elapsed
+    # ── Timer + stage-check loop ──────────────────────────────────────────────
+    while sc.active and sc.success is None and sc.timer_remaining > 0:
+        await asyncio.sleep(1.0)
+        sc.timer_remaining -= 1
         sc.blink = not sc.blink
 
         if sc.current_stage == 1:
-            sc.feedback_msg = "Close hatch,complete the pre-dive checks and mention it. Enable Dive In."
-            if sw.dive_in:
+            if sw.ab_p and sw.e_batts:
                 sc.current_stage = 2
-                sc.feedback_msg  = "Dive In enabled. Set VBT value and enable FreeBoard_P."
+                sc.feedback_msg = "Note down the insulation value and based on that take a call on further powering"
 
         elif sc.current_stage == 2:
-            if sw.vbt_set_value and sw.freeboard_p:
+            if sw.mcb and sw.ab_p_bms and sw.ab_b:
                 sc.current_stage = 3
-                sc.feedback_msg  = "Life support checks done and mention the checks done. Enable VBS HPU."
+                sc.feedback_msg = "Switch ON the PC"
 
         elif sc.current_stage == 3:
-            try:
-                hpu_on = b.vbs.hpu_enable
-            except AttributeError:
-                hpu_on = False
-            if hpu_on:
+            if sw.mb_p_1 and sw.mb_p_2 and sw.mb_p_3 and sw.mb_p_4 and sw.mb_p_5:
                 sc.current_stage = 4
-                sc.feedback_msg  = "HPU ON. VBS tank filling..."
+                sc.feedback_msg = "Now distribute the power"
 
         elif sc.current_stage == 4:
-            try:
-                current = b.vbs.tank_level
-                b.vbs.tank_level = min(100, current + 5)
-                sc.feedback_msg  = f"Filling VBS tank... {b.vbs.tank_level}%"
-                if b.vbs.tank_level >= 100:
-                    sc.success        = True
-                    sc.active         = False
-                    sc.result_message = "Variable Ballast Tank filled. Mission complete."
-                    break
-            except AttributeError as e:
-                print(f"[SCENARIO] VBS tank_level error: {e}")
+            if sw.md_pde:
                 sc.success        = True
                 sc.active         = False
-                sc.result_message = "VBS Tank filled. Mission complete."
-                break
+                sc.result_message = "Vehicle powered successfully. Switch ON the LED."
+                await broadcast_fn()
+                await asyncio.sleep(6)
+                reset_scenario(sc)
+                await broadcast_fn()
+                return
 
-        await broadcast_fn(ScenarioOverlay_fn())
-        await asyncio.sleep(1.0)
+        await broadcast_fn()
 
+    # ── Timer expired ─────────────────────────────────────────────────────────
     if sc.active and sc.success is None:
         sc.success        = False
         sc.active         = False
         sc.result_message = "Time expired before mission completion. Mission failed."
 
-    await broadcast_fn(ScenarioOverlay_fn())
+    await broadcast_fn()
     await asyncio.sleep(6)
     reset_scenario(sc)
-    await broadcast_fn(ScenarioOverlay_fn())
+    await broadcast_fn()

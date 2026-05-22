@@ -561,10 +561,11 @@ class SwitchesCategory(BaseModel):
     mb_p_4: bool = False
     mb_p_5: bool = False
     ab_p_bms: bool = False
-    mb_p_bms: bool = False
-    ab_p_power_selection: bool = False
-    mb_p_pde_p: bool = False
-
+    ab_p: bool = False
+    mcb: bool = False 
+    md_pde: bool = False
+    ab_b: bool = False
+    e_batts: bool = False
 class SwitchesState(BaseModel):
     state: SwitchesCategory = SwitchesCategory()
 

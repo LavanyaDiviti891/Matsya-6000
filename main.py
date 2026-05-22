@@ -59,7 +59,7 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
 )
-from scenario import scenario_state, reset_scenario, run_loading_ballasttank_scenario
+from scenario import scenario_state, reset_scenario, run_powering_matsya_scenario
 
 import asyncio
 import random
@@ -203,6 +203,57 @@ def ScenarioOverlay():
         ),
     )
 
+
+
+
+def ScenarioOverlayWidget():
+    """Embedded directly in AppLayout on every broadcast — no OOB/WebSocket swap needed."""
+    sc = scenario_state
+    if not sc.active and sc.success is None:
+        return Div(id="scenario-overlay", style="display:none;")
+
+    if sc.success is True:
+        border_color, glow_color = "#00ff88", "#00ff8844"
+        status_text = "✓  MISSION COMPLETE"
+    elif sc.success is False:
+        border_color, glow_color = "#ff4444", "#ff444444"
+        status_text = "✗  MISSION FAILED"
+    else:
+        urgent = sc.timer_remaining <= 10
+        border_color = "#ff6600" if (urgent and sc.blink) else "#facc15"
+        glow_color = "#facc1544"
+        status_text = "⚠  SCENARIO IN PROGRESS"
+
+    pct = max(0, sc.timer_remaining / sc.timer_total * 100)
+    bar_color = "#ff4444" if pct < 20 else ("#facc15" if pct < 50 else "#00ff88")
+
+    timer_bar = Div(
+        Div(style=f"height:6px;width:{pct:.1f}%;background:{bar_color};border-radius:3px;transition:width 0.9s linear;"),
+        style="height:6px;width:100%;background:#333;border-radius:3px;margin-top:10px;",
+    ) if sc.success is None else Div()
+
+    metrics = Div(
+        Span("TIME ", style="color:#aaa;font-size:13px;"),
+        Span(f"{sc.timer_remaining}s",
+             style=f"color:{'#ff4444' if sc.timer_remaining<=10 else '#facc15'};font-weight:700;font-size:15px;"),
+        style="margin-top:8px;",
+    ) if sc.success is None else Div(sc.result_message, style="color:#ccc;font-size:13px;margin-top:8px;max-width:460px;")
+
+    hint = Div(sc.feedback_msg, style="font-size:13px;color:#facc15;margin-top:6px;font-weight:700;") if sc.feedback_msg else Div()
+
+    return Div(
+        Div(status_text, style=f"color:{border_color};font-size:18px;font-weight:800;letter-spacing:2px;"),
+        Div(sc.mission_name, style="color:#888;font-size:12px;margin-top:3px;"),
+        metrics, hint, timer_bar,
+        id="scenario-overlay",
+        style=(
+            f"position:fixed;top:110px;right:24px;"
+            f"background:#0d0d0dee;border:1.5px solid {border_color};border-radius:12px;"
+            f"padding:16px 28px;z-index:9999;text-align:center;"
+            f"backdrop-filter:blur(8px);min-width:320px;max-width:420px;"
+            f"box-shadow:0 0 28px {glow_color};pointer-events:none;"
+        ),
+    )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UI Views
@@ -918,9 +969,9 @@ def AppLayout(active_tab="Main"):
             d_cls = "toggle-dot-on" if is_on else "toggle-dot-off"
             highlight = False
             if sc.active:
-                if sc.mission_name == "LOADING BALLAST TANK" and state_key in (
-                    "dive_in", "vbt_set_value", "freeboard_p",
-                    "read_pressure_p", "read_pressure_s",
+                if sc.mission_name == "POWERING MATSYA" and state_key in (
+                    "ab_p", "e_batts", "mcb", "ab_p_bms",
+                    "ab_b", "mb_p_1", "mb_p_2", "mb_p_3", "mb_p_4", "mb_p_5", "md_pde",
                 ):
                     highlight = True
 
@@ -943,20 +994,20 @@ def AppLayout(active_tab="Main"):
 
         # ── Scenario launcher banner (sits above the switch grid) ─────────────
 
-        man_is_active = sc.active and sc.mission_name == "LOADING BALLAST TANK"
-        man_is_success = sc.success if sc.mission_name == "LOADING BALLAST TANK" else None
+        man_is_active = sc.active and sc.mission_name == "POWERING MATSYA"
+        man_is_success = sc.success if sc.mission_name == "POWERING MATSYA" else None
         man_border = "#facc15" if man_is_active else ("#00ff88" if man_is_success is True else ("#ff4444" if man_is_success is False else "#333"))
         man_label  = "🟡 SCENARIO ACTIVE" if man_is_active else ("✅ MISSION COMPLETE" if man_is_success is True else ("❌ MISSION FAILED" if man_is_success is False else "▶  START SCENARIO"))
         man_scenario_banner = Div(
             Div(
-                Span("Loading Ballast Tank", style="font-weight:800; color:#38bdf8; font-size:13px; letter-spacing:1px;"),
+                Span("Powering Matsya", style="font-weight:800; color:#38bdf8; font-size:13px; letter-spacing:1px;"),
                 Span(man_label, style=f"font-size:12px; color:{man_border}; margin-left:12px;"),
                 style="display:flex; align-items:center; flex:1;"
             ),
             Div(
                 Span(
                     "START" if not man_is_active else "RUNNING…",
-                    hx_post="/api/scenario/emergency/start",
+                    hx_post="/api/scenario/powering/start",
                     hx_swap="none",
                     style=(
                         "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
@@ -967,7 +1018,7 @@ def AppLayout(active_tab="Main"):
                 ),
                 Span(
                     "RESET",
-                    hx_post="/api/scenario/emergency/reset",
+                    hx_post="/api/scenario/powering/reset",
                     hx_swap="none",
                     style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
                 ),
@@ -1016,9 +1067,11 @@ def AppLayout(active_tab="Main"):
             ToggleBlock("MB_P_4*", sw.mb_p_4, "mb_p_4"),
             ToggleBlock("MB_P_5*", sw.mb_p_5, "mb_p_5"),
             ToggleBlock("AB_P_BMS*", sw.ab_p_bms, "ab_p_bms"),
-            ToggleBlock("MB_P_BMS*", sw.mb_p_bms, "mb_p_bms"),
-            ToggleBlock("AB_P Power selection*", sw.ab_p_power_selection, "ab_p_power_selection"),
-            ToggleBlock("MB_P-PDE_P*", sw.mb_p_pde_p, "mb_p_pde_p"),
+            ToggleBlock("AB_P ", sw.ab_p, "ab_p"),
+            ToggleBlock("MCB*", sw.mcb, "mcb"),
+            ToggleBlock("MD_PDE", sw.md_pde, "md_pde"),
+            ToggleBlock("AB_B", sw.ab_b, "ab_b"),
+            ToggleBlock("E_BATTS", sw.e_batts, "e_batts"),
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
         col3 = Div(
@@ -1088,8 +1141,7 @@ def AppLayout(active_tab="Main"):
             ["Main","HSSS","Ballast","Propulsion","POWER","Imaging","Sensors","Logging","Status","50 Kwh","MCC","Switches"],
             active_tab=active_tab,
         ),
-        # Scenario overlay placeholder — swapped via OOB on every broadcast
-        Div(id="scenario-overlay"),
+        ScenarioOverlayWidget(),
         id=f"dashboard-content-{active_tab.lower()}",
         cls="dashboard-root",
         hx_swap_oob="true",
@@ -1100,11 +1152,11 @@ def AppLayout(active_tab="Main"):
 # Page routes
 # ─────────────────────────────────────────────────────────────────────────────
 scenario_task = None
+simulator_task = None  # declared here so route handlers can reference it before simulate_data is defined
 
 @rt("/")
 async def get(dive_num: int = 1):
     global simulator_task
-    global scenario_task
     if simulator_task is None or simulator_task.done():
         app_state.is_powered_on = True
         sim_global.target_dive = dive_num
@@ -1112,10 +1164,8 @@ async def get(dive_num: int = 1):
     elif dive_num != 1:
         sim_global.target_dive = dive_num
 
-    if scenario_task is None or scenario_task.done():
-        scenario_task = asyncio.create_task(
-            run_loading_ballasttank_scenario(app_state, broadcast, ScenarioOverlay)
-        )
+    # Scenario is NOT auto-started on page load.
+    # Use POST /api/scenario/powering/start to begin it explicitly.
 
     return Title("MATSYA 6000 View"), Div(
         AppLayout(active_tab="Main"), id="ws-container", hx_ext="ws", ws_connect="/ws"
@@ -1170,7 +1220,6 @@ def get_switches():
 # ─────────────────────────────────────────────────────────────────────────────
 # Simulation engine
 # ─────────────────────────────────────────────────────────────────────────────
-simulator_task = None
 
 class SimState:
     command: str = None
@@ -1182,11 +1231,13 @@ sim_global = SimState()
 
 
 async def broadcast_all_layouts():
-    """Push all tab layouts + scenario overlay to every connected client."""
+    """Push all tab layouts to every connected client.
+    ScenarioOverlayWidget() is already embedded inside each AppLayout,
+    so no separate OOB broadcast is needed (avoids duplicate overlay).
+    """
     tabs = ["Main","HSSS","Ballast","Propulsion","POWER","Imaging","Sensors","Logging","Status","50 Kwh","MCC","Switches"]
     for tab in tabs:
         await broadcast(AppLayout(active_tab=tab))
-    await broadcast(ScenarioOverlay())
 
 
 async def simulate_data():
@@ -1324,23 +1375,24 @@ async def simulate_data():
 # Scenario API routes
 # ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-@rt("/api/scenario/emergency/start", methods=["POST"])
+@rt("/api/scenario/powering/start", methods=["POST"])
 async def man_scenario_start():
     global scenario_task
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_loading_ballasttank_scenario(app_state, broadcast, ScenarioOverlay)
+           run_powering_matsya_scenario(app_state, broadcast_all_layouts, None)
         )
     return ""
 
 
-@rt("/api/scenario/emergency/reset", methods=["POST"])
+@rt("/api/scenario/powering/reset", methods=["POST"])
 async def man_scenario_reset():
     global scenario_task
     if scenario_task and not scenario_task.done():
         scenario_task.cancel()
+        scenario_task = None
     reset_scenario(scenario_state)
-    await broadcast(ScenarioOverlay())
+    # ScenarioOverlayWidget is embedded in AppLayout; broadcast_all_layouts covers it
     await broadcast_all_layouts()
     return ""
 
