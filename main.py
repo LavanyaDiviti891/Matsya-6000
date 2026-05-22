@@ -59,7 +59,7 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
 )
-from scenario import scenario_state, reset_scenario, run_powering_matsya_scenario
+from scenario import scenario_state, reset_scenario, run_normal_maneuvering_scenario
 
 import asyncio
 import random
@@ -210,7 +210,7 @@ def ScenarioOverlayWidget():
     """Embedded directly in AppLayout on every broadcast — no OOB/WebSocket swap needed."""
     sc = scenario_state
     if not sc.active and sc.success is None:
-        return Div(id="scenario-overlay", style="display:none;")
+        return Div(id="scenario-overlay", hx_swap_oob="true", style="display:none;")
 
     if sc.success is True:
         border_color, glow_color = "#00ff88", "#00ff8844"
@@ -246,6 +246,7 @@ def ScenarioOverlayWidget():
         Div(sc.mission_name, style="color:#888;font-size:12px;margin-top:3px;"),
         metrics, hint, timer_bar,
         id="scenario-overlay",
+        hx_swap_oob="true",
         style=(
             f"position:fixed;top:110px;right:24px;"
             f"background:#0d0d0dee;border:1.5px solid {border_color};border-radius:12px;"
@@ -298,8 +299,8 @@ def HeaderArea():
                 Span(s.present_time, cls="header-value-box mono"),
                 # Playback controls
                 Div(
-                    Span("⏮", hx_post="/api/sim/start", hx_swap="none", style="cursor: pointer; user-select: none; margin-right: 5px;"),
-                    Span("⏸" if not sim_global.paused else "▶️", hx_post="/api/sim/toggle_pause", hx_swap="none", style="cursor: pointer; user-select: none; margin-right: 5px;", id="play-pause-btn"),
+                    Span("⏮", hx_post="/api/sim/start", hx_trigger="click", hx_swap="none", style="cursor: pointer; user-select: none; margin-right: 5px;"),
+                    Span("⏸" if not sim_global.paused else "▶️", hx_post="/api/sim/toggle_pause", hx_trigger="click", hx_swap="none", style="cursor: pointer; user-select: none; margin-right: 5px;", id="play-pause-btn"),
                     Form(
                         Select(
                             Option("1x Speed", value="1", selected=(sim_global.speed == "1")),
@@ -310,7 +311,7 @@ def HeaderArea():
                         ),
                         style="display: inline-block; margin: 0; margin-right: 5px;"
                     ),
-                    Span("⏭", hx_post="/api/sim/end", hx_swap="none", style="cursor: pointer; user-select: none;"),
+                    Span("⏭", hx_post="/api/sim/end", hx_trigger="click", hx_swap="none", style="cursor: pointer; user-select: none;"),
                     style="display: flex; gap: 5px; margin-top: 5px; font-size: 14px; justify-content: center; background: #111; padding: 2px 10px; border-radius: 4px; border: 1px solid #333; align-items: center;"
                 ),
                 cls="header-metric",
@@ -344,11 +345,14 @@ def AppLayout(active_tab="Main"):
             cls="sidebar-section",
         ),
         Div(cls="sidebar-divider"),
+        # FIX 3: hx_ext="ignore:ws" on this wrapper prevents the parent ws-container
+        # from routing these ToggleSwitch hx-post clicks over the no-op WebSocket handler.
         Div(
             ToggleSwitch("Joystick", s.sidebar.joystick, id_key="toggle-joystick", toggle_url="/api/toggle_joystick"),
             ToggleSwitch("Thrusters Enable", s.sidebar.thrusters_enable, id_key="toggle-thrusters", toggle_url="/api/toggle_thrusters_enable"),
             ToggleSwitch("High Speed", s.sidebar.high_speed, id_key="toggle-high-speed", toggle_url="/api/toggle_high_speed"),
             cls="sidebar-section",
+            hx_ext="ignore:ws",
         ),
         Div(cls="sidebar-divider"),
         Div(
@@ -968,15 +972,18 @@ def AppLayout(active_tab="Main"):
             t_cls = "toggle-on" if is_on else "toggle-off"
             d_cls = "toggle-dot-on" if is_on else "toggle-dot-off"
             highlight = False
-            if sc.active:
-                if sc.mission_name == "POWERING MATSYA" and state_key in (
-                    "ab_p", "e_batts", "mcb", "ab_p_bms",
-                    "ab_b", "mb_p_1", "mb_p_2", "mb_p_3", "mb_p_4", "mb_p_5", "md_pde",
+                
+            if sc.mission_name == "Normal maneuvering in seadbed" and state_key in (
+                    # FIX 4: correct field name is uw_camera_p (confirmed by user)
+                    "uw_camera_p", "joystick_enable",
+                    "img.led_p1.power","img.led_p2.power","img.led_p3.power",
+                    "img.led_s1.power","img.led_s2.power","img.led_s3.power",
+                    "img.hd_camera_p","img.hd_camera_s",
+                    "img.hd_sdi_p1","img.hd_sdi_p2","img.hd_sdi_s1","img.hd_sdi_s2"
                 ):
                     highlight = True
 
-                elif sc.mission_name == "Emergency Drop weights" and state_key in ("sw.Emergency_Drop_Weight_P1(SC) or  sw.Emergency_Drop_Weight_P1(PC)"):
-                    highlight = True
+               
             border = "border:2px solid #facc15; border-radius:4px;" if highlight else ""
             return Div(
                 Span(label, style="font-size: 12px; font-weight: 500;"),
@@ -988,27 +995,30 @@ def AppLayout(active_tab="Main"):
                 style=f"display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; background: rgba(0,0,0,0.2); {border} margin-bottom: 2px;",
                 id=f"tog-sw-{state_key.replace('_', '-')}",
                 hx_post=f"/api/toggle/switches.state.{state_key}",
+                hx_trigger="click",
                 hx_swap="none",
-                hx_swap_oob="true"
+                hx_ext="ignore:ws",  # FIX 3: prevent the ws extension on the parent ws-container from intercepting this HTTP POST
             )
 
         # ── Scenario launcher banner (sits above the switch grid) ─────────────
 
-        man_is_active = sc.active and sc.mission_name == "POWERING MATSYA"
-        man_is_success = sc.success if sc.mission_name == "POWERING MATSYA" else None
+        man_is_active = sc.active and sc.mission_name == "Normal maneuvering in seadbed"
+        man_is_success = sc.success if sc.mission_name == "Normal maneuvering in seadbed" else None
         man_border = "#facc15" if man_is_active else ("#00ff88" if man_is_success is True else ("#ff4444" if man_is_success is False else "#333"))
         man_label  = "🟡 SCENARIO ACTIVE" if man_is_active else ("✅ MISSION COMPLETE" if man_is_success is True else ("❌ MISSION FAILED" if man_is_success is False else "▶  START SCENARIO"))
         man_scenario_banner = Div(
             Div(
-                Span("Powering Matsya", style="font-weight:800; color:#38bdf8; font-size:13px; letter-spacing:1px;"),
+                Span("Start maneuvering", style="font-weight:800; color:#38bdf8; font-size:13px; letter-spacing:1px;"),
                 Span(man_label, style=f"font-size:12px; color:{man_border}; margin-left:12px;"),
                 style="display:flex; align-items:center; flex:1;"
             ),
             Div(
                 Span(
                     "START" if not man_is_active else "RUNNING…",
-                    hx_post="/api/scenario/powering/start",
+                    hx_post="/api/scenario/normalmanu/start",
+                    hx_trigger="click",
                     hx_swap="none",
+                    hx_ext="ignore:ws",  # FIX 3: prevent ws extension intercepting this HTTP POST
                     style=(
                         "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
                         "color:#facc15; padding:5px 14px; border-radius:5px; font-size:12px;"
@@ -1018,8 +1028,10 @@ def AppLayout(active_tab="Main"):
                 ),
                 Span(
                     "RESET",
-                    hx_post="/api/scenario/powering/reset",
+                    hx_post="/api/scenario/normalmanu/reset",
+                    hx_trigger="click",
                     hx_swap="none",
+                    hx_ext="ignore:ws",  # FIX 3: prevent ws extension intercepting this HTTP POST
                     style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
                 ),
                 style="display:flex; align-items:center;"
@@ -1232,8 +1244,10 @@ sim_global = SimState()
 
 async def broadcast_all_layouts():
     """Push all tab layouts to every connected client.
-    ScenarioOverlayWidget() is already embedded inside each AppLayout,
-    so no separate OOB broadcast is needed (avoids duplicate overlay).
+    ScenarioOverlayWidget is already embedded inside AppLayout on every call,
+    so no separate broadcast is needed — sending it again as a standalone OOB
+    element caused a swap race that wiped the overlay immediately after it appeared.
+    FIX 2: removed the duplicate standalone broadcast(ScenarioOverlayWidget()) call.
     """
     tabs = ["Main","HSSS","Ballast","Propulsion","POWER","Imaging","Sensors","Logging","Status","50 Kwh","MCC","Switches"]
     for tab in tabs:
@@ -1375,17 +1389,17 @@ async def simulate_data():
 # Scenario API routes
 # ─────────────────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────────────────
-@rt("/api/scenario/powering/start", methods=["POST"])
+@rt("/api/scenario/normalmanu/start", methods=["POST"])
 async def man_scenario_start():
     global scenario_task
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-           run_powering_matsya_scenario(app_state, broadcast_all_layouts, None)
+           run_normal_maneuvering_scenario(app_state, broadcast_all_layouts, None)
         )
     return ""
 
 
-@rt("/api/scenario/powering/reset", methods=["POST"])
+@rt("/api/scenario/normalmanu/reset", methods=["POST"])
 async def man_scenario_reset():
     global scenario_task
     if scenario_task and not scenario_task.done():
