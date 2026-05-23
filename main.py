@@ -59,7 +59,13 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
 )
-from scenario import scenario_state, run_drop_weight_scenario, reset_scenario, run_sequential_drop_scenario
+
+
+from scenario import (
+    scenario_state,
+    reset_scenario,
+    run_emg_dropweights_scenario,
+    AscendScenario)
 
 import asyncio
 import random
@@ -86,6 +92,8 @@ rt = app.route
 # ─────────────────────────────────────────────────────────────────────────────
 app_state = MatsyaUIState()
 connected_clients = set()
+ascend_scenario = AscendScenario()
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +117,8 @@ async def broadcast(html_component):
     for client_send in list(connected_clients):
         try:
             await client_send(xml_str)
-        except Exception:
+        except Exception as e:
+            print(f"Broadcast error: {e}")
             connected_clients.discard(client_send)
 
 
@@ -120,27 +129,56 @@ def ScenarioOverlay():
     sc = scenario_state
 
     # ── idle: invisible placeholder ───────────────────────────────────────────
-    if not sc.active and sc.success is None:
+    popup_text = ascend_scenario.get_popup()
+    
+    if not sc.active and sc.success is None and popup_text == "":
         return Div(id="scenario-overlay", hx_swap_oob="true")
 
-    # ── colour theme based on state ───────────────────────────────────────────
-    if sc.success is True:
+ 
+    # ── DESCEND SOP POPUP PRIORITY ───────────────────────
+    if popup_text != "":
+
+        border_color = "#facc15"
+        glow_color   = "#facc1544"
+
+        status_text = popup_text
+
+    # ── SUCCESS ──────────────────────────────────────────
+    elif sc.success is True:
+
         border_color = "#00ff88"
         glow_color   = "#00ff8844"
-        status_text  = "✓  MISSION COMPLETE"
+
+        status_text = "✓ MISSION COMPLETE"
+
+    # ── FAILURE ──────────────────────────────────────────
     elif sc.success is False:
+
         border_color = "#ff4444"
         glow_color   = "#ff444444"
-        status_text  = "✗  MISSION FAILED"
+
+        status_text = "✗ MISSION FAILED"
+
+    # ── EMERGENCY SCENARIO ───────────────────────────────
     else:
-        # in-progress — flash yellow/orange based on remaining time
-        urgent = sc.timer_remaining <= 10
-        border_color = "#ff6600" if (urgent and sc.blink) else "#facc15"
-        glow_color   = "#facc1544"
-        status_text  = "⚠  DEPTH CRITICAL — DROP WEIGHT NOW"
+
+        urgent = sc.active and sc.timer_remaining <= 10
+
+        border_color = (
+            "#ff6600"
+            if (urgent and sc.blink)
+            else "#facc15"
+        )
+
+        glow_color = "#facc1544"
+
+        status_text = "⚠ SCENARIO IN PROGRESS"
 
     # ── timer bar (only while active) ─────────────────────────────────────────
-    pct = max(0, sc.timer_remaining / sc.timer_total * 100)
+    pct = (
+    max(0, sc.timer_remaining / sc.timer_total * 100)
+    if sc.timer_total > 0 else 0
+    )
     bar_color = "#ff4444" if pct < 20 else ("#facc15" if pct < 50 else "#00ff88")
 
     timer_bar = Div(
@@ -165,9 +203,9 @@ def ScenarioOverlay():
         ),
         Span("TIME ", style="color:#aaa; font-size:13px;"),
         Span(
-            f"{sc.timer_remaining}s",
+            f"{sc.timer_remaining if sc.active else 0}s",
             style=(
-                f"color:{'#ff4444' if sc.timer_remaining <= 10 else '#facc15'};"
+                f"color:{'#ff4444' if (sc.active and sc.timer_remaining <= 10) else '#00ff88'};"
                 "font-weight:700; font-size:15px;"
             ),
         ),
@@ -178,36 +216,93 @@ def ScenarioOverlay():
     )
 
     # ── mission hint (shown while in-progress) ────────────────────────────────
-    if getattr(sc, 'feedback_msg', ''):
-        hint = Div(sc.feedback_msg, style="font-size:13px; color:#facc15; margin-top:6px; font-weight:700;")
-    else:
-        hint = Div(
-            "→ Go to the  ",
-            Span("Switches", style="color:#facc15; font-weight:700;"),
-            " tab → flip  ",
-            Span("Emergency Drop Weight P1 or P2", style="color:#facc15; font-weight:700;"),
-            style="font-size:12px; color:#aaa; margin-top:6px;",
-        ) if sc.success is None else Div()
+        # ── feedback / SOP status ─────────────────────────────
+    if popup_text != "":
 
+        hint = Div(
+            "ASCEND SOP ACTIVE",
+            style=(
+                "font-size:13px;"
+                "color:#facc15;"
+                "margin-top:6px;"
+                "font-weight:700;"
+            )
+        )
+
+    elif getattr(sc, 'feedback_msg', ''):
+
+        hint = Div(
+            sc.feedback_msg,
+            style=(
+                "font-size:13px;"
+                "color:#facc15;"
+                "margin-top:6px;"
+                "font-weight:700;"
+            )
+        )
+
+    else:
+
+        hint = Div()
+
+    # ── overlay ────────────────────────────────────────────
     return Div(
+
         Div(
-            status_text,
-            style=f"color:{border_color}; font-size:18px; font-weight:800; letter-spacing:2px;",
+            *[
+                Div(
+                    line,
+                    style="margin-bottom:4px;"
+                )
+                for line in status_text.split("\n")
+            ],
+
+            style=(
+                f"color:{border_color};"
+                "font-size:18px;"
+                "font-weight:800;"
+                "letter-spacing:2px;"
+            ),
         ),
-        Div(sc.mission_name, style="color:#888; font-size:12px; margin-top:3px;"),
+
+        Div(
+            "NORMAL ASCEND SOP"
+            if popup_text != ""
+            else sc.mission_name,
+
+            style=(
+                "color:#888;"
+                "font-size:12px;"
+                "margin-top:3px;"
+            )
+        ),
+
         metrics,
         hint,
         timer_bar,
+
         id="scenario-overlay",
         hx_swap_oob="true",
+
         style=(
-            f"position:fixed; top:72px; left:50%; transform:translateX(-50%);"
-            f"background:#0d0d0dee; border:1.5px solid {border_color}; border-radius:12px;"
-            f"padding:16px 28px; z-index:9999; text-align:center;"
-            f"backdrop-filter:blur(8px); min-width:360px; max-width:520px;"
-            f"box-shadow:0 0 28px {glow_color}; pointer-events:none;"
+            "position:fixed;"
+            "bottom:80px;"
+            "left:50%;"
+            "transform:translateX(-50%);"
+            "background:#0d0d0dee;"
+            f"border:1.5px solid {border_color};"
+            "border-radius:12px;"
+            "padding:16px 28px;"
+            "z-index:9999;"
+            "text-align:center;"
+            "backdrop-filter:blur(8px);"
+            "min-width:360px;"
+            "max-width:520px;"
+            f"box-shadow:0 0 28px {glow_color};"
+            "pointer-events:none;"
         ),
     )
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -916,99 +1011,150 @@ def AppLayout(active_tab="Main"):
         sc = scenario_state
 
         def ToggleBlock(label, is_on, state_key):
+
             t_cls = "toggle-on" if is_on else "toggle-off"
             d_cls = "toggle-dot-on" if is_on else "toggle-dot-off"
-            # Highlight the two drop-weight switches when scenario is active
-            highlight = (
-                state_key in ("em_drop_weight_p1_sc", "em_drop_weight_p2_pc")
-                and sc.active
+
+            popup_text = ascend_scenario.get_popup()
+
+            # ====================================================
+            # SOP HIGHLIGHTING
+            # ====================================================
+
+            highlight = False
+
+                        # ---- RELEASE 300kg ----
+            if (
+                "300kg" in popup_text and
+                state_key in (
+                    "port_side_sdw_3",
+                    "starboard_side_sdw_3"
+                )
+            ):
+                highlight = True
+
+            # ---- MAIN BALLAST ----
+            elif (
+                "BALLAST" in popup_text and
+                state_key == "freeboard_p"
+            ):
+                highlight = True
+
+            # ---- SONAR & LIGHTS ----
+            elif (
+                "SONAR" in popup_text and
+                state_key in (
+                    "sonar",
+                    "uw_led_p",
+                    "uw_led_s"
+                )
+            ):
+                highlight = True
+
+            # ====================================================
+            # BORDER STYLE
+            # ====================================================
+
+            border = (
+                "border:2px solid #facc15;"
+                "border-radius:6px;"
+                "box-shadow:0 0 12px #facc1555;"
+                if highlight else
+                "border:1px solid #333;"
+                "border-radius:6px;"
             )
-            border = "border:2px solid #facc15; border-radius:4px;" if highlight else ""
+
+            # ====================================================
+            # COMPONENT
+            # ====================================================
+
             return Div(
-                Span(label, style="font-size: 12px; font-weight: 500;"),
-                Div(
-                    Span("ON" if is_on else "OFF", style="font-size: 10px; margin-right: 6px; color: var(--color-text-muted);"),
-                    Div(Div(cls=f"toggle-dot {d_cls}"), cls=f"toggle-track {t_cls}", style="transform: scale(0.8); transform-origin: right center;"),
-                    style="display: flex; align-items: center;"
+
+                Span(
+                    label,
+                    style=(
+                        "font-size:12px;"
+                        "font-weight:600;"
+                        "color:white;"
+                    )
                 ),
-                style=f"display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; background: rgba(0,0,0,0.2); {border} margin-bottom: 2px;",
-                id=f"tog-sw-{state_key.replace('_', '-')}",
+
+                Div(
+
+                    Span(
+                        "ON" if is_on else "OFF",
+                        style=(
+                            "font-size:10px;"
+                            "margin-right:6px;"
+                            "color:#bbb;"
+                        )
+                    ),
+
+                    Div(
+                        Div(cls=f"toggle-dot {d_cls}"),
+                        cls=f"toggle-track {t_cls}",
+                        style=(
+                            "transform:scale(0.8);"
+                            "transform-origin:right center;"
+                        )
+                    ),
+
+                    style="display:flex; align-items:center;"
+                ),
+
+                style=(
+                    "display:flex;"
+                    "transition:all 0.25s ease;"
+                    "justify-content:space-between;"
+                    "align-items:center;"
+                    "padding:8px 10px;"
+                    "background:rgba(0,0,0,0.25);"
+                    f"{border}"
+                    "margin-bottom:6px;"
+                ),
+
+                id=f"tog-sw-{state_key.replace('_','-')}",
+
                 hx_post=f"/api/toggle/switches.state.{state_key}",
-                hx_swap="none",
-                hx_swap_oob="true"
+                hx_trigger="click",
+                hx_swap="none"
             )
 
         # ── Scenario launcher banner (sits above the switch grid) ─────────────
-        is_em_active = sc.active and sc.mission_name == "DROP WEIGHT — EMERGENCY ASCENT"
-        is_em_success = sc.success if sc.mission_name == "DROP WEIGHT — EMERGENCY ASCENT" else None
-        em_border = "#facc15" if is_em_active else ("#00ff88" if is_em_success is True else ("#ff4444" if is_em_success is False else "#333"))
-        em_label  = "🟡 SCENARIO ACTIVE" if is_em_active else ("✅ MISSION COMPLETE" if is_em_success is True else ("❌ MISSION FAILED" if is_em_success is False else "▶  START SCENARIO"))
-        scenario_banner = Div(
-            Div(
-                Span("DROP WEIGHT DRILL", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
-                Span(em_label, style=f"font-size:12px; color:{em_border}; margin-left:12px;"),
-                style="display:flex; align-items:center; flex:1;"
-            ),
-            Div(
-                Span(
-                    "START" if not is_em_active else "RUNNING…",
-                    hx_post="/api/scenario/drop_weight/start",
-                    hx_swap="none",
-                    style=(
-                        "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
-                        "color:#facc15; padding:5px 14px; border-radius:5px; font-size:12px;"
-                        "font-weight:700; margin-right:8px; pointer-events:" +
-                        ("none; opacity:0.4;" if sc.active else "auto;")
-                    ),
-                ),
-                Span(
-                    "RESET",
-                    hx_post="/api/scenario/drop_weight/reset",
-                    hx_swap="none",
-                    style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
-                ),
-                style="display:flex; align-items:center;"
-            ),
-            style=(
-                f"display:flex; justify-content:space-between; align-items:center;"
-                f"padding:10px 16px; background:#111; border:1px solid {em_border};"
-                f"border-radius:8px; margin-bottom:12px;"
-            )
-        )
 
-        is_seq_active = sc.active and sc.mission_name == "SEQUENTIAL DROP DRILL"
-        is_seq_success = sc.success if sc.mission_name == "SEQUENTIAL DROP DRILL" else None
-        seq_border = "#facc15" if is_seq_active else ("#00ff88" if is_seq_success is True else ("#ff4444" if is_seq_success is False else "#333"))
-        seq_label  = "🟡 SCENARIO ACTIVE" if is_seq_active else ("✅ MISSION COMPLETE" if is_seq_success is True else ("❌ MISSION FAILED" if is_seq_success is False else "▶  START SCENARIO"))
-        seq_scenario_banner = Div(
+        man_is_active = sc.active and sc.mission_name == "MANEUVERING PHASE"
+        man_is_success = sc.success if sc.mission_name == "MANEUVERING PHASE" else None
+        man_border = "#facc15" if man_is_active else ("#00ff88" if man_is_success is True else ("#ff4444" if man_is_success is False else "#333"))
+        man_label  = "🟡 ASCEND PHASE ACTIVE" if man_is_active else ("✅ MISSION COMPLETE" if man_is_success is True else ("❌ MISSION FAILED" if man_is_success is False else "▶  START SCENARIO"))
+        man_scenario_banner = Div(
             Div(
-                Span("SEQUENTIAL DROP DRILL", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
-                Span(seq_label, style=f"font-size:12px; color:{seq_border}; margin-left:12px;"),
+                Span("NORMAL ASCEND SOP", style="font-weight:800; color:#facc15; font-size:13px; letter-spacing:1px;"),
+                Span(man_label, style=f"font-size:12px; color:{man_border}; margin-left:12px;"),
                 style="display:flex; align-items:center; flex:1;"
             ),
-            Div(
-                Span(
-                    "START" if not is_seq_active else "RUNNING…",
-                    hx_post="/api/scenario/sequential_drop/start",
-                    hx_swap="none",
-                    style=(
-                        "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
-                        "color:#facc15; padding:5px 14px; border-radius:5px; font-size:12px;"
-                        "font-weight:700; margin-right:8px; pointer-events:" +
-                        ("none; opacity:0.4;" if sc.active else "auto;")
-                    ),
-                ),
-                Span(
-                    "RESET",
-                    hx_post="/api/scenario/sequential_drop/reset",
-                    hx_swap="none",
-                    style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
-                ),
-                style="display:flex; align-items:center;"
-            ),
+            # Div(
+            #     Span(
+            #         "START" if not man_is_active else "RUNNING…",
+            #         hx_post="/api/scenario/Emergency/start",
+            #         hx_swap="none",
+            #         style=(
+            #             "cursor:pointer; background:#1a1a1a; border:1px solid #facc15;"
+            #             "color:#facc15; padding:5px 14px; border-radius:5px; font-size:12px;"
+            #             "font-weight:700; margin-right:8px; pointer-events:" +
+            #             ("none; opacity:0.4;" if sc.active else "auto;")
+            #         ),
+            #     ),
+            #     Span(
+            #         "RESET",
+            #         hx_post="/api/scenario/Emergency/reset",
+            #         hx_swap="none",
+            #         style="cursor:pointer; background:#1a1a1a; border:1px solid #555; color:#aaa; padding:5px 10px; border-radius:5px; font-size:12px;",
+            #     ),
+            #     style="display:flex; align-items:center;"
+            # ),
             style=(
                 f"display:flex; justify-content:space-between; align-items:center;"
-                f"padding:10px 16px; background:#111; border:1px solid {seq_border};"
+                f"padding:10px 16px; background:#111; border:1px solid {man_border};"
                 f"border-radius:8px; margin-bottom:12px;"
             )
         )
@@ -1097,8 +1243,7 @@ def AppLayout(active_tab="Main"):
         )
 
         switches_panel = Div(
-            scenario_banner,
-            seq_scenario_banner,
+            man_scenario_banner,
             Div(col1, col2, col3, col4, col5, style="display:grid; grid-template-columns: repeat(5, 1fr); gap: 15px; overflow-y: auto; flex: 1;"),
             cls="mcc-panel",
             style="display: flex; flex-direction: column; padding:15px;"
@@ -1148,7 +1293,7 @@ async def get(dive_num: int = 1):
 
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_sequential_drop_scenario(app_state, broadcast, ScenarioOverlay)
+            run_emg_dropweights_scenario(app_state, broadcast, ScenarioOverlay)
         )
 
     return Title("MATSYA 6000 View"), Div(
@@ -1344,6 +1489,25 @@ async def simulate_data():
         if "header.mission_time" not in record or not record["header.mission_time"]:
             s.header.mission_time = datetime.now().strftime("%H:%M:%S")
 
+        
+        ascend_scenario.update(
+            s.header.depth.value,
+            s.switches.state)
+        
+        if ascend_scenario.completed:
+
+            scenario_state.success = True
+            scenario_state.result_message = (
+                "Normal Ascend SOP executed successfully"
+            )
+
+        elif ascend_scenario.failed:
+
+            scenario_state.success = False
+            scenario_state.result_message = (
+                "Ascend SOP failed"
+            )
+        
         await broadcast_all_layouts()
 
         if not sim_global.paused:
@@ -1357,44 +1521,34 @@ async def simulate_data():
 # ─────────────────────────────────────────────────────────────────────────────
 # Scenario API routes
 # ─────────────────────────────────────────────────────────────────────────────
-@rt("/api/scenario/drop_weight/start", methods=["POST"])
-async def scenario_start():
+# ─────────────────────────────────────────────────────────────────────────────
+@rt("/api/scenario/emergency/start", methods=["POST"])
+async def man_scenario_start():
     global scenario_task
     if scenario_task is None or scenario_task.done():
         scenario_task = asyncio.create_task(
-            run_drop_weight_scenario(app_state, broadcast, ScenarioOverlay)
+            run_emg_dropweights_scenario(app_state, broadcast, ScenarioOverlay)
         )
     return ""
 
 
-@rt("/api/scenario/drop_weight/reset", methods=["POST"])
-async def scenario_reset():
+@rt("/api/scenario/emergency/reset", methods=["POST"])
+async def man_scenario_reset():
+
     global scenario_task
+    global ascend_scenario
+
     if scenario_task and not scenario_task.done():
         scenario_task.cancel()
+
     reset_scenario(scenario_state)
+
+    # ── reset descend SOP ─────────────────────────────
+    ascend_scenario = AscendScenario()
+
     await broadcast(ScenarioOverlay())
     await broadcast_all_layouts()
-    return ""
 
-@rt("/api/scenario/sequential_drop/start", methods=["POST"])
-async def seq_scenario_start():
-    global scenario_task
-    if scenario_task is None or scenario_task.done():
-        scenario_task = asyncio.create_task(
-            run_sequential_drop_scenario(app_state, broadcast, ScenarioOverlay)
-        )
-    return ""
-
-
-@rt("/api/scenario/sequential_drop/reset", methods=["POST"])
-async def seq_scenario_reset():
-    global scenario_task
-    if scenario_task and not scenario_task.done():
-        scenario_task.cancel()
-    reset_scenario(scenario_state)
-    await broadcast(ScenarioOverlay())
-    await broadcast_all_layouts()
     return ""
 
 
@@ -1452,8 +1606,6 @@ async def generic_toggle(state_path: str):
     val = getattr(obj, parts[-1])
     setattr(obj, parts[-1], not val)
 
-    # If the scenario is active and a drop-weight switch was just toggled,
-    # the run_drop_weight_scenario loop will detect it on its next tick (≤1s).
     await broadcast_all_layouts()
     return ""
 
