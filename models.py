@@ -193,6 +193,24 @@ class UmbilicalState(BaseModel):
     water_leak: str = "No Leak"
 
 
+class EBatteryState(BaseModel):
+    """Emergency Battery telemetry — EB_P / EB_S (SOP steps 5, 6, 21, 22).
+    GO criteria: voltage > 25 V, SOC > 90 %, IR >= 1.5 MOhm."""
+    voltage: NumericTelemetry = NumericTelemetry(value=0.0, unit="V")
+    soc: NumericTelemetry = NumericTelemetry(value=0.0, unit="%")
+    ir_instant: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
+    ir_final: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
+    alarm: bool = False
+
+
+class UBusState(BaseModel):
+    """Utility Bus telemetry — UB_P / UB_S (SOP steps 11, 12, 27, 28).
+    GO criteria: voltage ~24 V, IR >= 1.5 MOhm."""
+    voltage: NumericTelemetry = NumericTelemetry(value=0.0, unit="V")
+    ir_instant: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
+    ir_final: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
+
+
 class PowerTelemetry(BaseModel):
     mb_p: BatteryState = BatteryState()
     aux_p: BatteryState = BatteryState()
@@ -204,6 +222,12 @@ class PowerTelemetry(BaseModel):
     ide_s: EnclosureState = EnclosureState()
     ub_port: UmbilicalState = UmbilicalState()
     ub_stbd: UmbilicalState = UmbilicalState()
+    # Emergency battery buses (BATTMAN PRO readings)
+    eb_p: EBatteryState = EBatteryState()
+    eb_s: EBatteryState = EBatteryState()
+    # Utility bus readings (MECO Volt meter / Bender isoRW425)
+    ub_p: UBusState = UBusState()
+    ub_s: UBusState = UBusState()
 
 
 # ----------------- IMAGING SECTIONS -----------------
@@ -493,7 +517,7 @@ class MCCState(BaseModel):
     status: MCCStatus = MCCStatus()
 
 
-class SwitchesCategory(BaseModel):
+class SwitchesCategory_P(BaseModel):
     # Thruster Controls
     speed_control: bool = False
     heading_trim: bool = False
@@ -554,6 +578,23 @@ class SwitchesCategory(BaseModel):
     em_drop_weight_p1_sc: bool = False
     em_drop_weight_p2_pc: bool = False
 
+    # POWER SEQUENCING SWITCHES — Port (from SOP steps 2-17, 37-46)
+    # Emergency Battery Port bus
+    e_batts_p: bool = False        # Step 2: EB_P power selection / Emergency battery enable
+    mcb_p: bool = False            # Step 3: MCB-1 ON for Emergency Battery Port
+    emergency_led_p: bool = False  # Step 4: EMG_LED_P Emergency light
+
+    # Auxiliary / Utility Bus Port
+    ab_p: bool = False             # Step 9: AB_P toggle (Aux battery port)
+    ub_p_mcb: bool = False         # Step 10: UB_P MCB (Utility bus port MCB)
+    int_led_p: bool = False        # Step 13: INT_LED_P internal lights
+    ub_p: bool = False             # Step 14: UB_P changeover confirmation
+
+    # PDE/IDE Port power-up
+    pde_p_oim: bool = False        # Step 39: PDE_P_OIM toggle
+    pde_p_olr: bool = False        # Step 40: PDE_P_OLR overload relay
+    ide_p: bool = False            # Step 45: IDE1_P toggle
+
     # POWER DIRECT CONTROL_PORT
     mb_p_1: bool = False
     mb_p_2: bool = False
@@ -565,66 +606,121 @@ class SwitchesCategory(BaseModel):
     ab_p_power_selection: bool = False
     mb_p_pde_p: bool = False
 
+class SwitchesCategory_S(BaseModel):
+    # Thruster Controls
+    speed_control: bool = False
+    heading_trim: bool = False
+    depth_trim: bool = False
+    lateral_trim: bool = False
+
+    # BATS Control
+    hp_as_on_off: bool = False
+    hp_bs_on_off: bool = False
+    hp_reg_set: bool = False
+    pitch_on_off: bool = False
+    vbt_set_value: bool = False
+    pitch_up_down_analog: bool = False
+    freeboard_s: bool = False
+    dive_in: bool = False
+    water_out_on_off: bool = False
+
+    # General control Switches
+    co2_scrubber_s: bool = False
+    joystick_enable: bool = False
+    pilot_selection: bool = False
+    copilot_selection: bool = False
+    vhs_power_s: bool = False
+    led_emergency_port: bool = False
+    uw_camera_s: bool = False
+    sonar: bool = False
+    surface_ins: bool = False
+
+    # Service Drop Weight Switches
+    port_side_sdw_1: bool = False
+    port_side_sdw_2: bool = False
+    port_side_sdw_3: bool = False
+    port_side_sdw_4: bool = False
+    port_side_sdw_5: bool = False
+    starboard_side_sdw_1: bool = False
+    starboard_side_sdw_2: bool = False
+    starboard_side_sdw_3: bool = False
+    starboard_side_sdw_4: bool = False
+    starboard_side_sdw_5: bool = False
+
+    # Emergency Jettisoning_S
+    ej_manipulator_1: bool = False
+    ej_manipulator_2: bool = False
+    ej_manipulator_3: bool = False
+    ej_manipulator_4: bool = False
+    ej_trim_system_1: bool = False
+    ej_trim_system_2: bool = False
+    ej_trim_system_3: bool = False
+    ej_trim_system_4: bool = False
+    em_buoy_release_1: bool = False
+    em_buoy_release_2: bool = False
+    em_buoy_release_3: bool = False
+    em_buoy_release_4: bool = False
+    ej_sampling_basket_1: bool = False
+    ej_sampling_basket_2: bool = False
+    ej_sampling_basket_3: bool = False
+    ej_sampling_basket_4: bool = False
+    em_drop_weight_s1_sc: bool = False
+    em_drop_weight_s2_pc: bool = False
+
+    # POWER SEQUENCING SWITCHES — Starboard (from SOP steps 18-35, 47-56)
+    # Emergency Battery Starboard bus
+    e_batts_s: bool = False        # Step 18: EB_S power selection
+    mcb_s: bool = False            # Step 19: MCB-2 ON for Emergency Battery Starboard
+    emergency_led_s: bool = False  # Step 20: EMG_LED_S Emergency light
+
+    # Auxiliary / Utility Bus Starboard
+    ab_s: bool = False             # Step 25: AB_S toggle
+    ub_s_mcb: bool = False         # Step 26: UB_S MCB
+    int_led_s: bool = False        # Step 29: INT_LED_S internal lights
+    ub_s: bool = False             # Step 30: UB_S changeover confirmation
+
+    # PDE/IDE Starboard power-up
+    pde_s_oim: bool = False        # Step 49: PDE_S_OIM toggle
+    pde_s_olr: bool = False        # Step 50: PDE_S_OLR overload relay
+    ide_s: bool = False            # Step 55: IDE1_S toggle
+
+    # POWER DIRECT CONTROL_STARBOARD
+    mb_s_1: bool = False
+    mb_s_2: bool = False
+    mb_s_3: bool = False
+    mb_s_4: bool = False
+    mb_s_5: bool = False
+    ab_s_bms: bool = False
+    mb_s_bms: bool = False
+    ab_s_power_selection: bool = False
+    mb_s_pde_s: bool = False
+
 class SwitchesState(BaseModel):
-    state: SwitchesCategory = SwitchesCategory()
+    p: SwitchesCategory_P = SwitchesCategory_P()
+    s: SwitchesCategory_S = SwitchesCategory_S()
 
 # ----------------- ROOT STATE -----------------
 class MatsyaUIState(BaseModel):
-
     is_powered_on: bool = False
-
     active_tab: str = "Main"
 
-    scenario_status: str = "IDLE"
-
-    current_checkpoint: int = 0
-
-    scenario_message: str = ""
-
-    drop_weight_port_1: bool = False
-    drop_weight_port_2: bool = False
-    drop_weight_port_3: bool = False
-    drop_weight_port_4: bool = False
-    drop_weight_port_5: bool = False
-
-    drop_weight_starboard_1: bool = False
-    drop_weight_starboard_2: bool = False
-    drop_weight_starboard_3: bool = False
-    drop_weight_starboard_4: bool = False
-    drop_weight_starboard_5: bool = False
-
     header: HeaderTelemetry = HeaderTelemetry()
-
     imu: IMUTelemetry = IMUTelemetry()
-
     bottom: BottomStrip = BottomStrip()
-
     propulsion: PropulsionTelemetry = PropulsionTelemetry()
-
     propulsion_detail: PropulsionDetailState = PropulsionDetailState()
-
     environment: EnvironmentTelemetry = EnvironmentTelemetry()
-
     sidebar: SidebarControls = SidebarControls()
-
     leds: LedIndicators = LedIndicators()
-
     hsss: HSSSTelemetry = HSSSTelemetry()
-
     ballast: BallastTelemetry = BallastTelemetry()
-
     power: PowerTelemetry = PowerTelemetry()
-
     imaging: ImagingState = ImagingState()
-
     sensors: SensorsState = SensorsState()
-
     logging: LoggingState = LoggingState()
-
     status: StatusState = StatusState()
-
     kwh: KwhState = KwhState()
-
     mcc: MCCState = MCCState()
-
     switches: SwitchesState = SwitchesState()
+
+

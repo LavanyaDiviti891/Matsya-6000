@@ -4271,3 +4271,116 @@ body {
 .mcc-right-toggle {
     margin-top: 10px;
 }
+
+/* ==========================
+   METAL SWITCH
+   ========================== */
+.metal-switch-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 6px;
+    width: 100%;
+}
+
+.metal-switch-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-subtext);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex: 1;
+}
+
+.metal-switch-body {
+    position: relative;
+    width: 32px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Base (Round panel nut) */
+.metal-switch-base {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    background: radial-gradient(circle at 50% 50%, #dcdcdc, #999 80%, #666);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3), 
+                inset 0 1px 2px rgba(255,255,255,0.9), 
+                inset 0 -1px 2px rgba(0,0,0,0.5),
+                0 0 0 1px #888,
+                0 0 0 2px #ccc;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Inner threaded hole */
+.metal-switch-neck {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle at center, #111, #333 80%, #000);
+    border-radius: 50%;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.9), 0 1px 1px rgba(255,255,255,0.6);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Lever */
+.metal-switch-lever {
+    position: absolute;
+    width: 8px;
+    height: 18px;
+    background: linear-gradient(to right, #999, #fff 40%, #ccc 60%, #777);
+    border-radius: 4px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 3;
+    cursor: pointer;
+    top: 50%;
+    left: 50%;
+    margin-top: -9px;
+    margin-left: -4px;
+}
+
+/* Tip */
+.metal-switch-lever::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle at 35% 35%, #ffffff, #b3b3b3 60%, #555555);
+    border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ON State */
+.metal-switch-on {
+    transform: translateY(-8px);
+    box-shadow: 2px 3px 4px rgba(0,0,0,0.4), inset 0 0 1px rgba(255,255,255,0.8);
+}
+.metal-switch-on::after {
+    transform: translateY(0);
+    box-shadow: 0 2px 3px rgba(0,0,0,0.4);
+}
+
+/* OFF State */
+.metal-switch-off {
+    transform: translateY(8px);
+    box-shadow: 2px -3px 4px rgba(0,0,0,0.4), inset 0 0 1px rgba(255,255,255,0.8);
+}
+.metal-switch-off::after {
+    transform: translateY(10px);
+    box-shadow: 0 -2px 3px rgba(0,0,0,0.4);
+}

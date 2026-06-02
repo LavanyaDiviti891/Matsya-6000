@@ -177,6 +177,37 @@ def ToggleSwitch(label, is_on, id_key=None, toggle_url=None):
     )
 
 
+def MetalSwitch(label, is_on, id_key=None, toggle_url=None):
+    """Realistic Metal Toggle Switch"""
+    toggle_cls = "metal-switch-on" if is_on else "metal-switch-off"
+    
+    attrs = {"cls": "metal-switch-container"}
+    if id_key:
+        attrs["id"] = id_key
+        attrs["hx_swap_oob"] = "true"
+    if toggle_url:
+        attrs["hx_post"] = toggle_url
+        attrs["hx_swap"] = "none"
+    else:
+        # Visual client-side toggle for demo purposes
+        attrs["onclick"] = "let l=this.querySelector('.metal-switch-lever'); l.classList.toggle('metal-switch-on'); l.classList.toggle('metal-switch-off');"
+
+    return Div(
+        Span(label, cls="metal-switch-label"),
+        Div(
+            Div(
+                Div(
+                    Div(cls=f"metal-switch-lever {toggle_cls}"),
+                    cls="metal-switch-neck"
+                ),
+                cls="metal-switch-base"
+            ),
+            cls="metal-switch-body"
+        ),
+        **attrs
+    )
+
+
 def BottomTabsNav(tabs, active_tab="Main"):
     """Bottom footer with segmented navigation"""
     nav_links = []
@@ -204,8 +235,10 @@ def BottomTabsNav(tabs, active_tab="Main"):
             url = "/50-kwh"
         elif t == "MCC":
             url = "/mcc"
-        elif t == "Switches":
-            url = "/switches"
+        elif t == "Switches_P":
+            url = "/switches-p"
+        elif t == "Switches_S":
+            url = "/switches-s"
         else:
             url = "#"
         nav_links.append(
