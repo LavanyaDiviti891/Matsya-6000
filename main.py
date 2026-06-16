@@ -73,7 +73,7 @@ import re
 import json
 import glob
 from datetime import datetime
-from scenario import scenario_state, run_powering_matsya_scenario
+from scenario import scenario_state, run_loading_ballast_scenario
 
 
 # Favicon + Inter Font + Custom Stylesheet
@@ -119,7 +119,7 @@ def ScenarioBanner():
     sc = scenario_state
     if not sc.active:
         return Div(
-            A("🚀 Start Powering Scenario",
+            A("🚀 Start Ballast Scenario",
               hx_post="/api/scenario/start",
               hx_swap="none",
               cls="btn-start-scenario"),
@@ -137,26 +137,44 @@ def ScenarioBanner():
     timer_str = f"{sc.timer_remaining // 60}:{sc.timer_remaining % 60:02d}"
     message = sc.result_message if sc.result_message else sc.feedback_msg
     
+    banner_bg = "#f5c400" if sc.success is None else ("#1a7a1a" if sc.success else "#a00000")
+    banner_fg = "#000000" if sc.success is None else "#ffffff"
+
     return Div(
         Div(
             Div(
-                Span(sc.mission_name, cls="scenario-title"),
-                Span(f"Stage {sc.current_stage}/24" if sc.current_stage > 0 else "Init", cls="scenario-stage"),
-                cls="scenario-header-left"
+                Span(sc.mission_name, style=f"font-size:22px; font-weight:900; color:{banner_fg}; letter-spacing:1px;"),
+                Span(
+                    f"Stage {sc.current_stage}/6" if sc.current_stage > 0 else "Init",
+                    style=f"font-size:18px; font-weight:700; color:{banner_fg}; background:rgba(0,0,0,0.18); padding:4px 14px; border-radius:20px; margin-left:12px;"
+                ),
+                style="display:flex; align-items:center; gap:8px;"
             ),
             Div(
-                Span("⏱ " + timer_str, cls=f"scenario-timer {blink_class}"),
-                A("❌ Cancel", hx_post="/api/scenario/cancel", hx_swap="none", cls="btn-cancel-scenario"),
-                cls="scenario-header-right"
+                Span(
+                    "⏱ " + timer_str,
+                    style=f"font-size:24px; font-weight:900; color:{banner_fg}; {'animation:blink 1s step-start infinite;' if sc.blink and sc.success is None else ''}"
+                ),
+                A(
+                    "❌ Cancel",
+                    hx_post="/api/scenario/cancel",
+                    hx_swap="none",
+                    style="font-size:15px; font-weight:700; color:#fff; background:#c0392b; border:none; padding:6px 18px; border-radius:8px; cursor:pointer; text-decoration:none; margin-left:16px;"
+                ),
+                style="display:flex; align-items:center; gap:8px;"
             ),
-            cls="scenario-banner-header"
+            style="display:flex; justify-content:space-between; align-items:center; padding:10px 20px; border-bottom:2px solid rgba(0,0,0,0.15);"
         ),
         Div(
-            Span(message, cls="scenario-feedback", style="color: #000000; font-weight: 700; font-size: 14px;"),
-            cls="scenario-banner-body"
+            Span(
+                message,
+                style=f"color:{banner_fg}; font-weight:800; font-size:18px; line-height:1.5;"
+            ),
+            style="padding:14px 20px;"
         ),
         cls=f"scenario-banner {status_color}",
-        id="scenario-banner-overlay"
+        id="scenario-banner-overlay",
+        style=f"background:{banner_bg}; border-radius:10px; box-shadow:0 4px 24px rgba(0,0,0,0.35); border:3px solid rgba(0,0,0,0.2); margin:8px; position:relative; z-index:999;"
     )
 
 
@@ -560,6 +578,9 @@ def AppLayout(active_tab="Main"):
                         Div(
                             "HPU ON" if b.vbs.hpu_enable else "HPU OFF",
                             cls="vbs-hpu-btn" + (" vbs-hpu-on" if b.vbs.hpu_enable else ""),
+                            hx_post="/api/toggle/ballast.vbs.hpu_enable",
+                            hx_swap="none",
+                            style="cursor:pointer;",
                         ),
                         cls="vbs-hpu-row",
                     ),
@@ -1782,7 +1803,7 @@ async def start_scenario():
         return ""
     if scenario_task and not scenario_task.done():
         scenario_task.cancel()
-    scenario_task = asyncio.create_task(run_powering_matsya_scenario(app_state, broadcast_all_layouts))
+    scenario_task = asyncio.create_task(run_loading_ballast_scenario(app_state, broadcast_all_layouts))
     return ""
 
 @rt("/api/scenario/cancel", methods=["POST"])
