@@ -193,24 +193,6 @@ class UmbilicalState(BaseModel):
     water_leak: str = "No Leak"
 
 
-class EBatteryState(BaseModel):
-    """Emergency Battery telemetry — EB_P / EB_S (SOP steps 5, 6, 21, 22).
-    GO criteria: voltage > 25 V, SOC > 90 %, IR >= 1.5 MOhm."""
-    voltage: NumericTelemetry = NumericTelemetry(value=0.0, unit="V")
-    soc: NumericTelemetry = NumericTelemetry(value=0.0, unit="%")
-    ir_instant: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
-    ir_final: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
-    alarm: bool = False
-
-
-class UBusState(BaseModel):
-    """Utility Bus telemetry — UB_P / UB_S (SOP steps 11, 12, 27, 28).
-    GO criteria: voltage ~24 V, IR >= 1.5 MOhm."""
-    voltage: NumericTelemetry = NumericTelemetry(value=0.0, unit="V")
-    ir_instant: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
-    ir_final: NumericTelemetry = NumericTelemetry(value=0.0, unit="MOhm")
-
-
 class PowerTelemetry(BaseModel):
     mb_p: BatteryState = BatteryState()
     aux_p: BatteryState = BatteryState()
@@ -222,12 +204,6 @@ class PowerTelemetry(BaseModel):
     ide_s: EnclosureState = EnclosureState()
     ub_port: UmbilicalState = UmbilicalState()
     ub_stbd: UmbilicalState = UmbilicalState()
-    # Emergency battery buses (BATTMAN PRO readings)
-    eb_p: EBatteryState = EBatteryState()
-    eb_s: EBatteryState = EBatteryState()
-    # Utility bus readings (MECO Volt meter / Bender isoRW425)
-    ub_p: UBusState = UBusState()
-    ub_s: UBusState = UBusState()
 
 
 # ----------------- IMAGING SECTIONS -----------------
@@ -578,23 +554,6 @@ class SwitchesCategory_P(BaseModel):
     em_drop_weight_p1_sc: bool = False
     em_drop_weight_p2_pc: bool = False
 
-    # POWER SEQUENCING SWITCHES — Port (from SOP steps 2-17, 37-46)
-    # Emergency Battery Port bus
-    e_batts_p: bool = False        # Step 2: EB_P power selection / Emergency battery enable
-    mcb_p: bool = False            # Step 3: MCB-1 ON for Emergency Battery Port
-    emergency_led_p: bool = False  # Step 4: EMG_LED_P Emergency light
-
-    # Auxiliary / Utility Bus Port
-    ab_p: bool = False             # Step 9: AB_P toggle (Aux battery port)
-    ub_p_mcb: bool = False         # Step 10: UB_P MCB (Utility bus port MCB)
-    int_led_p: bool = False        # Step 13: INT_LED_P internal lights
-    ub_p: bool = False             # Step 14: UB_P changeover confirmation
-
-    # PDE/IDE Port power-up
-    pde_p_oim: bool = False        # Step 39: PDE_P_OIM toggle
-    pde_p_olr: bool = False        # Step 40: PDE_P_OLR overload relay
-    ide_p: bool = False            # Step 45: IDE1_P toggle
-
     # POWER DIRECT CONTROL_PORT
     mb_p_1: bool = False
     mb_p_2: bool = False
@@ -605,6 +564,14 @@ class SwitchesCategory_P(BaseModel):
     mb_p_bms: bool = False
     ab_p_power_selection: bool = False
     mb_p_pde_p: bool = False
+
+    # New additions
+    ib_insulation: float = 0.0
+    eb_b_status: float = 0.0
+    ub_voltage: float = 0.0
+    power_selection_eb: str = "1"
+    power_selection_ub: str = "1"
+    ub_mcb: bool = False
 
 class SwitchesCategory_S(BaseModel):
     # Thruster Controls
@@ -667,23 +634,6 @@ class SwitchesCategory_S(BaseModel):
     em_drop_weight_s1_sc: bool = False
     em_drop_weight_s2_pc: bool = False
 
-    # POWER SEQUENCING SWITCHES — Starboard (from SOP steps 18-35, 47-56)
-    # Emergency Battery Starboard bus
-    e_batts_s: bool = False        # Step 18: EB_S power selection
-    mcb_s: bool = False            # Step 19: MCB-2 ON for Emergency Battery Starboard
-    emergency_led_s: bool = False  # Step 20: EMG_LED_S Emergency light
-
-    # Auxiliary / Utility Bus Starboard
-    ab_s: bool = False             # Step 25: AB_S toggle
-    ub_s_mcb: bool = False         # Step 26: UB_S MCB
-    int_led_s: bool = False        # Step 29: INT_LED_S internal lights
-    ub_s: bool = False             # Step 30: UB_S changeover confirmation
-
-    # PDE/IDE Starboard power-up
-    pde_s_oim: bool = False        # Step 49: PDE_S_OIM toggle
-    pde_s_olr: bool = False        # Step 50: PDE_S_OLR overload relay
-    ide_s: bool = False            # Step 55: IDE1_S toggle
-
     # POWER DIRECT CONTROL_STARBOARD
     mb_s_1: bool = False
     mb_s_2: bool = False
@@ -694,6 +644,14 @@ class SwitchesCategory_S(BaseModel):
     mb_s_bms: bool = False
     ab_s_power_selection: bool = False
     mb_s_pde_s: bool = False
+
+    # New additions
+    ib_insulation: float = 0.0
+    eb_b_status: float = 0.0
+    ub_voltage: float = 0.0
+    power_selection_eb: str = "1"
+    power_selection_ub: str = "1"
+    ub_mcb: bool = False
 
 class SwitchesState(BaseModel):
     p: SwitchesCategory_P = SwitchesCategory_P()

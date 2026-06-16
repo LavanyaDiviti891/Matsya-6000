@@ -4384,3 +4384,525 @@ body {
     transform: translateY(10px);
     box-shadow: 0 -2px 3px rgba(0,0,0,0.4);
 }
+
+/* ==========================
+   VOLTAGE DISPLAY
+   ========================== */
+.voltage-display-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 8px;
+    margin-bottom: 2px;
+}
+
+.voltage-display-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-subtext);
+    text-align: center;
+}
+
+.voltage-display-box {
+    display: flex;
+    align-items: baseline;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: 4px 12px;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.voltage-display-value {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.voltage-display-unit {
+    font-size: 11px;
+    color: var(--color-muted);
+    margin-left: 4px;
+}
+
+/* ==========================
+   ROTARY SWITCH
+   ========================== */
+.rotary-switch-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 8px;
+    margin-bottom: 2px;
+}
+
+.rotary-switch-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-subtext);
+    text-align: center;
+}
+
+.rotary-switch-body {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.rotary-labels-row {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: -20px;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+}
+
+.rotary-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--color-subtext);
+}
+
+.rotary-lbl-sel {
+    color: var(--color-green);
+    text-shadow: 0 0 2px var(--color-green-soft);
+}
+
+.rotary-knob {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #444, #222);
+    border-radius: 50%;
+    border: 2px solid #555;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.rotary-knob-indicator {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 10px;
+    background: white;
+    border-radius: 2px;
+    box-shadow: 0 0 2px rgba(255,255,255,0.8);
+}
+
+/* ==========================
+   CUSTOM POWER INSTRUMENTS
+   ========================== */
+
+.tape-label {
+    background: #fdfdfd;
+    color: #222;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 14px;
+    padding: 2px 6px;
+    border: 1px solid #ddd;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    transform: rotate(-1deg);
+    display: inline-block;
+    text-transform: uppercase;
+}
+.bottom-label {
+    margin-top: 10px;
+}
+.side-label {
+    margin-left: 10px;
+    vertical-align: top;
+}
+
+/* 1. Insulation Display */
+.insulation-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    margin: 10px;
+}
+.iso-yellow-box {
+    background: #ffd600;
+    width: 80px;
+    height: 100px;
+    border-radius: 4px;
+    box-shadow: inset -2px -2px 5px rgba(0,0,0,0.2), 2px 2px 5px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-evenly;
+    border: 1px solid #bba000;
+}
+.iso-led-row {
+    display: flex;
+    gap: 8px;
+}
+.iso-led {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #333;
+    border: 1px solid #111;
+}
+.iso-lcd {
+    width: 60px;
+    height: 35px;
+    background: #2a2c26;
+    border: 2px solid #111;
+    border-radius: 2px;
+    box-shadow: inset 1px 1px 3px #000;
+    color: #8b9977;
+    font-family: monospace;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.iso-btn-row {
+    display: flex;
+    gap: 8px;
+}
+.iso-btn {
+    width: 10px;
+    height: 10px;
+    background: #1e3a8a;
+    border-radius: 50%;
+    box-shadow: inset -1px -1px 2px #000, 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+/* 2. BattMan Pro Display */
+.battman-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px;
+}
+.battman-gauge {
+    background: #3a3c40;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    border: 6px solid #222;
+    box-shadow: inset 2px 2px 10px rgba(255,255,255,0.1), 3px 3px 8px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    padding-top: 15px;
+}
+.battman-brand {
+    color: #fff;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+    font-style: italic;
+}
+.battman-lcd {
+    background: #8b9977;
+    width: 80px;
+    height: 35px;
+    border: 2px solid #111;
+    border-radius: 4px;
+    box-shadow: inset 2px 2px 4px rgba(0,0,0,0.5);
+    color: #111;
+    font-family: 'SF Mono', monospace;
+    font-size: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+.battman-btn-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.battman-btn {
+    background: #222;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+.battman-arrow {
+    width: 18px;
+    height: 18px;
+}
+.battman-menu {
+    width: 30px;
+    height: 18px;
+    border-radius: 10px;
+    font-size: 8px;
+}
+.battman-model {
+    color: #bbb;
+    font-size: 8px;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* 3. Red LED Voltage */
+.red-led-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px;
+}
+.red-led-lcd {
+    background: #1a0505;
+    width: 75px;
+    height: 45px;
+    border: 3px solid #333;
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8), 2px 2px 4px rgba(0,0,0,0.3);
+    color: #ff1111;
+    font-family: 'SF Mono', monospace;
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 0 5px #ff1111, 0 0 10px #ff1111;
+}
+
+/* ==========================
+   SYSTEM OFF STATE
+   ========================== */
+.dashboard-root.system-off .header-area {
+    pointer-events: auto;
+}
+.dashboard-root.system-off .header-area > *:not(#scenario-banner-overlay) {
+    pointer-events: none;
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+.dashboard-root.system-off .bottom-tabs .tab-link:not([href^="/switches-"]) {
+    pointer-events: none;
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+/* Disable main content parts EXCEPT sidebar on non-switches tabs */
+.dashboard-root.system-off:not([id^="dashboard-content-switches"]) .main-content > *:not(.col-sidebar) {
+    pointer-events: none;
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+.dashboard-root.system-off:not([id^="dashboard-content-switches"]) .main-content-wrapper > *:not(.main-content) {
+    pointer-events: none;
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+/* Sidebar parts disabled EXCEPT the footer which has the ON button */
+.dashboard-root.system-off .col-sidebar > *:not(.sidebar-footer) {
+    pointer-events: none;
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Scenario Banner Styles (Glassmorphism & High-End Aesthetic)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Enable interaction with the scenario banner when system is off */
+.dashboard-root.system-off .header-area {
+    pointer-events: auto !important;
+}
+.dashboard-root.system-off .header-area > *:not(#scenario-banner-overlay) {
+    pointer-events: none;
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+/* Start Scenario button container */
+.scenario-start-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 18px;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.btn-start-scenario {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-start-scenario:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+}
+
+.btn-start-scenario:active {
+    transform: translateY(0);
+}
+
+.scenario-banner {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 10px 18px;
+    border-radius: 0;
+    border: none;
+    border-bottom: 3px solid #f59e0b;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    background: #fffbeb;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scenario-banner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.scenario-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.scenario-title {
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #1a1a1a;
+}
+
+.scenario-stage {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: #1a1a1a;
+    border-radius: 20px;
+    color: #ffffff;
+}
+
+.scenario-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.scenario-timer {
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1a1a1a;
+    background: rgba(0, 0, 0, 0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.btn-cancel-scenario {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    padding: 4px 10px;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-cancel-scenario:hover {
+    color: #ffffff;
+    background: rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.scenario-banner-body {
+    display: flex;
+    align-items: center;
+}
+
+.scenario-feedback {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #111111;
+}
+
+/* Status variants */
+.scenario-banner.status-yellow {
+    background: #fffbeb;
+    border-bottom-color: #f59e0b;
+}
+
+.scenario-banner.status-yellow .scenario-title {
+    color: #92400e;
+}
+
+.scenario-banner.status-green {
+    background: #ecfdf5;
+    border-bottom-color: #10b981;
+}
+
+.scenario-banner.status-green .scenario-title {
+    color: #065f46;
+}
+
+.scenario-banner.status-red {
+    background: #fef2f2;
+    border-bottom-color: #ef4444;
+}
+
+.scenario-banner.status-red .scenario-title {
+    color: #991b1b;
+}
+
+/* Micro-animations */
+@keyframes sc-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.blink {
+    animation: sc-blink 1s infinite;
+}

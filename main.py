@@ -1,4 +1,4 @@
-from fasthtml.common import Div, Span, Link, H1, to_xml, FastHTML, H2, H3, Title, serve, Form, Input, Select, Option
+from fasthtml.common import Div, Span, Link, H1, to_xml, FastHTML, H2, H3, Title, serve, Form, Input, Select, Option, A
 from starlette.staticfiles import StaticFiles
 from models import MatsyaUIState
 from components import (
@@ -59,9 +59,13 @@ from components import (
     MccCrewStatus,
     MccPowerDropdown,
     MetalSwitch,
+    VoltageDisplay,
+    RotarySwitch,
+    InsulationDisplay,
+    BattManDisplay,
+    RedVoltageDisplay,
 )
 
-from scenario import scenario_state, reset_scenario, run_powering_matsya_scenario
 import asyncio
 import random
 import os
@@ -69,6 +73,7 @@ import re
 import json
 import glob
 from datetime import datetime
+from scenario import scenario_state, run_powering_matsya_scenario
 
 
 # Favicon + Inter Font + Custom Stylesheet
@@ -85,18 +90,6 @@ rt = app.route
 # ----------------- STATE -----------------
 app_state = MatsyaUIState()
 connected_clients = set()
-scenario_task = None   # background task for active scenario
-
-
-async def broadcast_all_layouts():
-    """Broadcast every tab layout so every open browser window stays in sync."""
-    for tab in [
-        "Main", "HSSS", "Ballast", "Propulsion", "POWER",
-        "Imaging", "Sensors", "Logging", "Status", "50 Kwh",
-        "MCC", "Switches_P", "Switches_S",
-    ]:
-        await broadcast(AppLayout(active_tab=tab))
-
 
 
 # ----------------- WEBSOCKETS -----------------
@@ -122,10 +115,56 @@ async def broadcast(html_component):
             connected_clients.discard(client_send)
 
 
+def ScenarioBanner():
+    sc = scenario_state
+    if not sc.active:
+        return Div(
+            A("🚀 Start Powering Scenario",
+              hx_post="/api/scenario/start",
+              hx_swap="none",
+              cls="btn-start-scenario"),
+            cls="scenario-start-container",
+            id="scenario-banner-overlay"
+        )
+    
+    status_color = "status-yellow"
+    if sc.success is True:
+        status_color = "status-green"
+    elif sc.success is False:
+        status_color = "status-red"
+        
+    blink_class = "blink" if sc.blink and sc.success is None else ""
+    timer_str = f"{sc.timer_remaining // 60}:{sc.timer_remaining % 60:02d}"
+    message = sc.result_message if sc.result_message else sc.feedback_msg
+    
+    return Div(
+        Div(
+            Div(
+                Span(sc.mission_name, cls="scenario-title"),
+                Span(f"Stage {sc.current_stage}/24" if sc.current_stage > 0 else "Init", cls="scenario-stage"),
+                cls="scenario-header-left"
+            ),
+            Div(
+                Span("⏱ " + timer_str, cls=f"scenario-timer {blink_class}"),
+                A("❌ Cancel", hx_post="/api/scenario/cancel", hx_swap="none", cls="btn-cancel-scenario"),
+                cls="scenario-header-right"
+            ),
+            cls="scenario-banner-header"
+        ),
+        Div(
+            Span(message, cls="scenario-feedback", style="color: #000000; font-weight: 700; font-size: 14px;"),
+            cls="scenario-banner-body"
+        ),
+        cls=f"scenario-banner {status_color}",
+        id="scenario-banner-overlay"
+    )
+
+
 # ----------------- UI VIEWS -----------------
 def HeaderArea():
     s = app_state.header
     return Div(
+        ScenarioBanner(),
         # Top strip: Dive info + Title + Present Time
         Div(
             Div(
@@ -1283,7 +1322,7 @@ def AppLayout(active_tab="Main"):
             cls="main-content-wrapper"
         )
 
-    elif active_tab == "Switches_P":
+    elif active_tab == "Switches_P1":
         sw = s.switches.p
         
         def ToggleBlock(label, is_on, state_key):
@@ -1303,7 +1342,11 @@ def AppLayout(active_tab="Main"):
             ToggleBlock("Heading trim", sw.heading_trim, "heading_trim"),
             ToggleBlock("Depth trim", sw.depth_trim, "depth_trim"),
             ToggleBlock("lateral trim", sw.lateral_trim, "lateral_trim"),
-            Div("BATS Control", cls="mcc-panel-title", style="background:#ffea00; color:black; margin-top: 10px;"),
+            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
+        )
+
+        col2 = Div(
+            Div("BATS Control", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("HP_AP_ON/OFF", sw.hp_ap_on_off, "hp_ap_on_off"),
             ToggleBlock("HP_BP_ON/OFF", sw.hp_bp_on_off, "hp_bp_on_off"),
             ToggleBlock("HP_Reg_set", sw.hp_reg_set, "hp_reg_set"),
@@ -1316,7 +1359,7 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
 
-        col2 = Div(
+        col3 = Div(
             Div("General control Switches", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Co2 scrubber_P", sw.co2_scrubber_p, "co2_scrubber_p"),
             ToggleBlock("Joystick Enable", sw.joystick_enable, "joystick_enable"),
@@ -1327,7 +1370,11 @@ def AppLayout(active_tab="Main"):
             ToggleBlock("UW Camera _P", sw.uw_camera_p, "uw_camera_p"),
             ToggleBlock("SONAR", sw.sonar, "sonar"),
             ToggleBlock("Surface_INS", sw.surface_ins, "surface_ins"),
-            Div("POWER DIRECT CONTROL_PORT", cls="mcc-panel-title", style="background:#ffea00; color:black; margin-top: 10px;"),
+            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
+        )
+
+        col4 = Div(
+            Div("POWER DIRECT CONTROL_PORT", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("MB_P_1*", sw.mb_p_1, "mb_p_1"),
             ToggleBlock("MB_P_2*", sw.mb_p_2, "mb_p_2"),
             ToggleBlock("MB_P_3*", sw.mb_p_3, "mb_p_3"),
@@ -1340,7 +1387,37 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
         
-        col3 = Div(
+        switches_panel = Div(
+            Div(col1, col2, col3, col4, style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
+            cls="mcc-panel",
+            style="display: flex; flex-direction: column;"
+        )
+
+        main_content_area = Div(
+            Div(
+                switches_panel,
+                sidebar_col,
+                cls="main-content"
+            ),
+            cls="main-content-wrapper"
+        )
+
+    elif active_tab == "Switches_P2":
+    
+        sw = s.switches.p
+        
+        def ToggleBlock(label, is_on, state_key):
+            return Div(
+                MetalSwitch(
+                    label=label,
+                    is_on=is_on,
+                    id_key=f"tog-sw-p-{state_key.replace('_', '-')}",
+                    toggle_url=f"/api/toggle/switches.p.{state_key}"
+                ),
+                style="display: flex; justify-content: center; align-items: center; padding: 4px; background: rgba(0,0,0,0.1); border-radius: 8px; margin-bottom: 2px;"
+            )
+        
+        col5 = Div(
             Div("Service Drop Weight Switches", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Port side SDW 1", sw.port_side_sdw_1, "port_side_sdw_1"),
             ToggleBlock("Port side SDW 2", sw.port_side_sdw_2, "port_side_sdw_2"),
@@ -1355,7 +1432,7 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
 
-        col4 = Div(
+        col6 = Div(
             Div("Emergency Jettisoning_P (1/2)", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Emergency Jettisoning of Manipulator_1", sw.ej_manipulator_1, "ej_manipulator_1"),
             ToggleBlock("Emergency Jettisoning of Manipulator_2", sw.ej_manipulator_2, "ej_manipulator_2"),
@@ -1369,7 +1446,7 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
 
-        col5 = Div(
+        col7 = Div(
             Div("Emergency Jettisoning_P (2/2)", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Emergency Marker Buoy Release_2", sw.em_buoy_release_2, "em_buoy_release_2"),
             ToggleBlock("Emergency Marker Buoy Release_3", sw.em_buoy_release_3, "em_buoy_release_3"),
@@ -1383,34 +1460,8 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
         
-        col6 = Div(
-            Div("Power Sequencing — PORT", cls="mcc-panel-title", style="background:#00bfff; color:black;"),
-            Div("Emergency Battery Port", cls="mcc-panel-title", style="background:#334; color:#adf; font-size:10px; margin-top:6px;"),
-            ToggleBlock("E_Batts_P (EB_P selector)", sw.e_batts_p, "e_batts_p"),
-            ToggleBlock("MCB_P (MCB-1)", sw.mcb_p, "mcb_p"),
-            ToggleBlock("Emergency_LED_P (EMG_LED_P)", sw.emergency_led_p, "emergency_led_p"),
-            Div("Auxiliary / Utility Bus Port", cls="mcc-panel-title", style="background:#334; color:#adf; font-size:10px; margin-top:6px;"),
-            ToggleBlock("AB_P (Aux Battery Port)", sw.ab_p, "ab_p"),
-            ToggleBlock("AB_P_BMS", sw.ab_p_bms, "ab_p_bms"),
-            ToggleBlock("UB_P_MCB (Utility Bus MCB)", sw.ub_p_mcb, "ub_p_mcb"),
-            ToggleBlock("INT_LED_P (Internal Lights)", sw.int_led_p, "int_led_p"),
-            ToggleBlock("UB_P (Changeover to UB_P)", sw.ub_p, "ub_p"),
-            Div("PDE / IDE Port", cls="mcc-panel-title", style="background:#334; color:#adf; font-size:10px; margin-top:6px;"),
-            ToggleBlock("MB_P_BMS", sw.mb_p_bms, "mb_p_bms"),
-            ToggleBlock("PDE_P_OIM", sw.pde_p_oim, "pde_p_oim"),
-            ToggleBlock("PDE_P_OLR (Overload Relay)", sw.pde_p_olr, "pde_p_olr"),
-            ToggleBlock("MB_P_1", sw.mb_p_1, "mb_p_1"),
-            ToggleBlock("MB_P_2", sw.mb_p_2, "mb_p_2"),
-            ToggleBlock("MB_P_3", sw.mb_p_3, "mb_p_3"),
-            ToggleBlock("MB_P_4", sw.mb_p_4, "mb_p_4"),
-            ToggleBlock("MB_P_5", sw.mb_p_5, "mb_p_5"),
-            ToggleBlock("MB_P-PDE_P (Main Contactor)", sw.mb_p_pde_p, "mb_p_pde_p"),
-            ToggleBlock("IDE_P (IDE1_P)", sw.ide_p, "ide_p"),
-            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
-        )
-
         switches_panel = Div(
-            Div(col1, col2, col3, col4, col5, col6, style="display:grid; grid-template-columns: repeat(6, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
+            Div(col5, col6, col7, style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
             cls="mcc-panel",
             style="display: flex; flex-direction: column;"
         )
@@ -1424,7 +1475,55 @@ def AppLayout(active_tab="Main"):
             cls="main-content-wrapper"
         )
 
-    elif active_tab == "Switches_S":
+    elif active_tab == "Switches_P3":
+        sw = s.switches.p
+        
+        def ToggleBlock(label, is_on, state_key):
+            return Div(
+                MetalSwitch(
+                    label=label,
+                    is_on=is_on,
+                    id_key=f"tog-sw-p-{state_key.replace('_', '-')}",
+                    toggle_url=f"/api/toggle/switches.p.{state_key}"
+                ),
+                style="display: flex; justify-content: center; align-items: center; padding: 4px; background: rgba(0,0,0,0.1); border-radius: 8px; margin-bottom: 2px;"
+            )
+            
+        top_row = Div(
+            InsulationDisplay("EB_P INSULATION", sw.ib_insulation, "k ohm", id_key="disp-sw-p-ib-ins"),
+            BattManDisplay("EB_P STATUS", sw.eb_b_status, "V", id_key="disp-sw-p-eb-b-status"),
+            RedVoltageDisplay("UB_P VOLTAGE", sw.ub_voltage, "V", id_key="disp-sw-p-ub-voltage"),
+            style="display: flex; gap: 40px; align-items: flex-end; padding: 20px; background: #c0c0c0; border: 1px solid #aaa; border-radius: 8px; margin-bottom: 20px; justify-content: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.1);"
+        )
+        
+        col1 = Div(
+            Div("Power Status & Selection", cls="mcc-panel-title", style="background:#ffea00; color:black; margin-bottom: 15px;"),
+            top_row,
+            Div(
+                RotarySwitch("Power selection EB_", ["UB_", "E_Batts"], sw.power_selection_eb, id_key="rot-sw-p-power-eb", toggle_url="/api/toggle/switches.p.power_selection_eb"),
+                RotarySwitch("Power selection UB", ["AB", "MB"], sw.power_selection_ub, id_key="rot-sw-p-power-ub", toggle_url="/api/toggle/switches.p.power_selection_ub"),
+                ToggleBlock("UB MCB", sw.ub_mcb, "ub_mcb"),
+                style="display:flex; flex-direction:column; gap:8px; align-items: center;"
+            ),
+            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px; grid-column: span 4;"
+        )
+
+        switches_panel = Div(
+            Div(col1, style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
+            cls="mcc-panel",
+            style="display: flex; flex-direction: column;"
+        )
+
+        main_content_area = Div(
+            Div(
+                switches_panel,
+                sidebar_col,
+                cls="main-content"
+            ),
+            cls="main-content-wrapper"
+        )
+
+    elif active_tab == "Switches_S1":
         sw = s.switches.s
         
         def ToggleBlock(label, is_on, state_key):
@@ -1444,7 +1543,11 @@ def AppLayout(active_tab="Main"):
             ToggleBlock("Heading trim", sw.heading_trim, "heading_trim"),
             ToggleBlock("Depth trim", sw.depth_trim, "depth_trim"),
             ToggleBlock("lateral trim", sw.lateral_trim, "lateral_trim"),
-            Div("BATS Control", cls="mcc-panel-title", style="background:#ffea00; color:black; margin-top: 10px;"),
+            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
+        )
+
+        col2 = Div(
+            Div("BATS Control", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("HP_AS_ON/OFF", sw.hp_as_on_off, "hp_as_on_off"),
             ToggleBlock("HP_BS_ON/OFF", sw.hp_bs_on_off, "hp_bs_on_off"),
             ToggleBlock("HP_Reg_set", sw.hp_reg_set, "hp_reg_set"),
@@ -1457,7 +1560,7 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
 
-        col2 = Div(
+        col3 = Div(
             Div("General control Switches", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Co2 scrubber_S", sw.co2_scrubber_s, "co2_scrubber_s"),
             ToggleBlock("Joystick Enable", sw.joystick_enable, "joystick_enable"),
@@ -1468,7 +1571,11 @@ def AppLayout(active_tab="Main"):
             ToggleBlock("UW Camera _S", sw.uw_camera_s, "uw_camera_s"),
             ToggleBlock("SONAR", sw.sonar, "sonar"),
             ToggleBlock("Surface_INS", sw.surface_ins, "surface_ins"),
-            Div("POWER DIRECT CONTROL_STARBOARD", cls="mcc-panel-title", style="background:#ffea00; color:black; margin-top: 10px;"),
+            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
+        )
+
+        col4 = Div(
+            Div("POWER DIRECT CONTROL_STARBOARD", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("MB_S_1*", sw.mb_s_1, "mb_s_1"),
             ToggleBlock("MB_S_2*", sw.mb_s_2, "mb_s_2"),
             ToggleBlock("MB_S_3*", sw.mb_s_3, "mb_s_3"),
@@ -1481,7 +1588,37 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
         
-        col3 = Div(
+        switches_panel = Div(
+            Div(col1, col2, col3, col4, style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
+            cls="mcc-panel",
+            style="display: flex; flex-direction: column;"
+        )
+
+        main_content_area = Div(
+            Div(
+                switches_panel,
+                sidebar_col,
+                cls="main-content"
+            ),
+            cls="main-content-wrapper"
+        )
+
+    elif active_tab == "Switches_S2":
+    
+        sw = s.switches.s
+        
+        def ToggleBlock(label, is_on, state_key):
+            return Div(
+                MetalSwitch(
+                    label=label,
+                    is_on=is_on,
+                    id_key=f"tog-sw-s-{state_key.replace('_', '-')}",
+                    toggle_url=f"/api/toggle/switches.s.{state_key}"
+                ),
+                style="display: flex; justify-content: center; align-items: center; padding: 4px; background: rgba(0,0,0,0.1); border-radius: 8px; margin-bottom: 2px;"
+            )
+        
+        col5 = Div(
             Div("Service Drop Weight Switches", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Port side SDW 1", sw.port_side_sdw_1, "port_side_sdw_1"),
             ToggleBlock("Port side SDW 2", sw.port_side_sdw_2, "port_side_sdw_2"),
@@ -1496,7 +1633,7 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
 
-        col4 = Div(
+        col6 = Div(
             Div("Emergency Jettisoning_S (1/2)", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Emergency Jettisoning of Manipulator_1", sw.ej_manipulator_1, "ej_manipulator_1"),
             ToggleBlock("Emergency Jettisoning of Manipulator_2", sw.ej_manipulator_2, "ej_manipulator_2"),
@@ -1510,7 +1647,7 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
 
-        col5 = Div(
+        col7 = Div(
             Div("Emergency Jettisoning_S (2/2)", cls="mcc-panel-title", style="background:#ffea00; color:black;"),
             ToggleBlock("Emergency Marker Buoy Release_2", sw.em_buoy_release_2, "em_buoy_release_2"),
             ToggleBlock("Emergency Marker Buoy Release_3", sw.em_buoy_release_3, "em_buoy_release_3"),
@@ -1524,34 +1661,8 @@ def AppLayout(active_tab="Main"):
             cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
         )
         
-        col6 = Div(
-            Div("Power Sequencing — STBD", cls="mcc-panel-title", style="background:#00bfff; color:black;"),
-            Div("Emergency Battery Starboard", cls="mcc-panel-title", style="background:#334; color:#adf; font-size:10px; margin-top:6px;"),
-            ToggleBlock("E_Batts_S (EB_S selector)", sw.e_batts_s, "e_batts_s"),
-            ToggleBlock("MCB_S (MCB-2)", sw.mcb_s, "mcb_s"),
-            ToggleBlock("Emergency_LED_S (EMG_LED_S)", sw.emergency_led_s, "emergency_led_s"),
-            Div("Auxiliary / Utility Bus Starboard", cls="mcc-panel-title", style="background:#334; color:#adf; font-size:10px; margin-top:6px;"),
-            ToggleBlock("AB_S (Aux Battery Stbd)", sw.ab_s, "ab_s"),
-            ToggleBlock("AB_S_BMS", sw.ab_s_bms, "ab_s_bms"),
-            ToggleBlock("UB_S_MCB (Utility Bus MCB)", sw.ub_s_mcb, "ub_s_mcb"),
-            ToggleBlock("INT_LED_S (Internal Lights)", sw.int_led_s, "int_led_s"),
-            ToggleBlock("UB_S (Changeover to UB_S)", sw.ub_s, "ub_s"),
-            Div("PDE / IDE Starboard", cls="mcc-panel-title", style="background:#334; color:#adf; font-size:10px; margin-top:6px;"),
-            ToggleBlock("MB_S_BMS", sw.mb_s_bms, "mb_s_bms"),
-            ToggleBlock("PDE_S_OIM", sw.pde_s_oim, "pde_s_oim"),
-            ToggleBlock("PDE_S_OLR (Overload Relay)", sw.pde_s_olr, "pde_s_olr"),
-            ToggleBlock("MB_S_1", sw.mb_s_1, "mb_s_1"),
-            ToggleBlock("MB_S_2", sw.mb_s_2, "mb_s_2"),
-            ToggleBlock("MB_S_3", sw.mb_s_3, "mb_s_3"),
-            ToggleBlock("MB_S_4", sw.mb_s_4, "mb_s_4"),
-            ToggleBlock("MB_S_5", sw.mb_s_5, "mb_s_5"),
-            ToggleBlock("MB_S-PDE_S (Main Contactor)", sw.mb_s_pde_s, "mb_s_pde_s"),
-            ToggleBlock("IDE_S (IDE1_S)", sw.ide_s, "ide_s"),
-            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px;"
-        )
-
         switches_panel = Div(
-            Div(col1, col2, col3, col4, col5, col6, style="display:grid; grid-template-columns: repeat(6, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
+            Div(col5, col6, col7, style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
             cls="mcc-panel",
             style="display: flex; flex-direction: column;"
         )
@@ -1565,6 +1676,53 @@ def AppLayout(active_tab="Main"):
             cls="main-content-wrapper"
         )
 
+    elif active_tab == "Switches_S3":
+        sw = s.switches.s
+        
+        def ToggleBlock(label, is_on, state_key):
+            return Div(
+                MetalSwitch(
+                    label=label,
+                    is_on=is_on,
+                    id_key=f"tog-sw-s-{state_key.replace('_', '-')}",
+                    toggle_url=f"/api/toggle/switches.s.{state_key}"
+                ),
+                style="display: flex; justify-content: center; align-items: center; padding: 4px; background: rgba(0,0,0,0.1); border-radius: 8px; margin-bottom: 2px;"
+            )
+            
+        top_row = Div(
+            InsulationDisplay("EB_S INSULATION", sw.ib_insulation, "k ohm", id_key="disp-sw-s-ib-ins"),
+            BattManDisplay("EB_S STATUS", sw.eb_b_status, "V", id_key="disp-sw-s-eb-b-status"),
+            RedVoltageDisplay("UB_S VOLTAGE", sw.ub_voltage, "V", id_key="disp-sw-s-ub-voltage"),
+            style="display: flex; gap: 40px; align-items: flex-end; padding: 20px; background: #c0c0c0; border: 1px solid #aaa; border-radius: 8px; margin-bottom: 20px; justify-content: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.1);"
+        )
+        
+        col1 = Div(
+            Div("Power Status & Selection", cls="mcc-panel-title", style="background:#ffea00; color:black; margin-bottom: 15px;"),
+            top_row,
+            Div(
+                RotarySwitch("Power selection EB_", ["UB_", "E_Batts"], sw.power_selection_eb, id_key="rot-sw-s-power-eb", toggle_url="/api/toggle/switches.s.power_selection_eb"),
+                RotarySwitch("Power selection UB", ["AB", "MB"], sw.power_selection_ub, id_key="rot-sw-s-power-ub", toggle_url="/api/toggle/switches.s.power_selection_ub"),
+                ToggleBlock("UB MCB", sw.ub_mcb, "ub_mcb"),
+                style="display:flex; flex-direction:column; gap:8px; align-items: center;"
+            ),
+            cls="mcc-col", style="display:flex; flex-direction:column; gap:4px; grid-column: span 4;"
+        )
+
+        switches_panel = Div(
+            Div(col1, style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 15px; overflow-y: auto; flex: 1; min-height: 0;"),
+            cls="mcc-panel",
+            style="display: flex; flex-direction: column;"
+        )
+
+        main_content_area = Div(
+            Div(
+                switches_panel,
+                sidebar_col,
+                cls="main-content"
+            ),
+            cls="main-content-wrapper"
+        )
     else:
         main_content_area = Div(
             Div(
@@ -1575,78 +1733,13 @@ def AppLayout(active_tab="Main"):
             cls="main-content-wrapper",
         )
 
-    # ---- SCENARIO BANNER (shown on every tab when a scenario is active) ----
-    sc = scenario_state
-    if sc.active or sc.success is not None:
-        # Colour: yellow while running, green on success, red on failure
-        if sc.success is True:
-            banner_bg = "#1a7a1a"
-            banner_border = "#2ecc40"
-        elif sc.success is False:
-            banner_bg = "#7a1a1a"
-            banner_border = "#e74c3c"
-        else:
-            banner_bg = "#1a1a00" if sc.blink else "#2a2a00"
-            banner_border = "#f0c040"
-
-        # Timer display
-        mins, secs = divmod(sc.timer_remaining, 60)
-        timer_str = f"{mins:02d}:{secs:02d}"
-
-        scenario_banner = Div(
-            Div(
-                Span(
-                    f"🎯 SCENARIO: {sc.mission_name}",
-                    style="font-weight:800; font-size:13px; letter-spacing:1px; color:#f0c040;",
-                ),
-                Span(
-                    f"STAGE {sc.current_stage}",
-                    style="font-weight:700; font-size:12px; background:#f0c040; color:#000; padding:2px 8px; border-radius:4px; margin-left:10px;",
-                ),
-                Span(
-                    f"⏱ {timer_str}",
-                    style="font-weight:700; font-size:13px; color:#fff; margin-left:12px; font-family:monospace;",
-                ),
-                style="display:flex; align-items:center; gap:4px;",
-            ),
-            Div(
-                Span(
-                    sc.result_message if sc.result_message else sc.feedback_msg,
-                    style="font-size:11px; color:#eee; font-weight:500;",
-                ),
-                style="margin-top:4px;",
-            ),
-            Div(
-                Span(
-                    "ABORT",
-                    hx_post="/api/scenario/abort",
-                    hx_swap="none",
-                    style="cursor:pointer; font-size:10px; font-weight:700; background:#c0392b; color:#fff; padding:2px 10px; border-radius:4px; user-select:none; margin-left:16px;",
-                ),
-                style="margin-top:4px;",
-            ),
-            style=(
-                f"background:{banner_bg}; border:1.5px solid {banner_border}; "
-                "padding:6px 14px; border-radius:6px; margin:4px 8px; "
-                "display:flex; flex-direction:column;"
-            ),
-        )
-    else:
-        # No active scenario — show the START button
-        scenario_banner = Div(
-            Span(
-                "▶  START SCENARIO: POWERING MATSYA",
-                hx_post="/api/scenario/start_powering_matsya",
-                hx_swap="none",
-                style="cursor:pointer; font-weight:700; font-size:11px; background:#1a3a6a; color:#7ecfff; padding:4px 16px; border-radius:5px; border:1px solid #2a5a9a; user-select:none; letter-spacing:0.5px;",
-            ),
-            style="display:flex; align-items:center; padding:4px 8px;",
-        )
-
     # Combine everything
+    root_cls = "dashboard-root"
+    if not s.is_powered_on:
+        root_cls += " system-off"
+
     return Div(
         HeaderArea(),
-        scenario_banner,
         main_content_area,
         BottomTabsNav(
             [
@@ -1661,25 +1754,52 @@ def AppLayout(active_tab="Main"):
                 "Status",
                 "50 Kwh",
                 "MCC",
-                "Switches_P",
-                "Switches_S",
+                "Switches_P1",
+                "Switches_P2",
+                "Switches_P3",
+                "Switches_S1",
+                "Switches_S2",
+                "Switches_S3",
             ],
             active_tab=active_tab,
         ),
         id=f"dashboard-content-{active_tab.lower()}",
-        cls="dashboard-root",
+        cls=root_cls,
         hx_swap_oob="true",
     )
+
+
+scenario_task = None
+
+async def broadcast_all_layouts():
+    for tab in ["Main", "HSSS", "Ballast", "Propulsion", "POWER", "Imaging", "Sensors", "Logging", "Status", "50 Kwh", "MCC", "Switches_P1", "Switches_P2", "Switches_P3", "Switches_S1", "Switches_S2", "Switches_S3"]:
+        await broadcast(AppLayout(active_tab=tab))
+
+@rt("/api/scenario/start", methods=["POST"])
+async def start_scenario():
+    global scenario_task
+    if scenario_state.active:
+        return ""
+    if scenario_task and not scenario_task.done():
+        scenario_task.cancel()
+    scenario_task = asyncio.create_task(run_powering_matsya_scenario(app_state, broadcast_all_layouts))
+    return ""
+
+@rt("/api/scenario/cancel", methods=["POST"])
+async def cancel_scenario():
+    global scenario_task
+    if scenario_task and not scenario_task.done():
+        scenario_task.cancel()
+    from scenario import reset_scenario
+    reset_scenario(scenario_state)
+    await broadcast_all_layouts()
+    return ""
 
 
 @rt("/")
 async def get(dive_num: int = 1):
     global simulator_task
-    if simulator_task is None or simulator_task.done():
-        app_state.is_powered_on = True
-        sim_global.target_dive = dive_num
-        simulator_task = asyncio.create_task(simulate_data())
-    elif dive_num != 1:
+    if dive_num != 1:
         sim_global.target_dive = dive_num
 
     return Title("MATSYA 6000 View"), Div(
@@ -1752,16 +1872,40 @@ def get_mcc():
         AppLayout(active_tab="MCC"), id="ws-container", hx_ext="ws", ws_connect="/ws"
     )
 
-@rt("/switches-p")
-def get_switches_p():
-    return Title("MATSYA 6000 View - Switches_P"), Div(
-        AppLayout(active_tab="Switches_P"), id="ws-container", hx_ext="ws", ws_connect="/ws"
+@rt("/switches-p1")
+def get_switches_p1():
+    return Title("MATSYA 6000 View - Switches_P1"), Div(
+        AppLayout(active_tab="Switches_P1"), id="ws-container", hx_ext="ws", ws_connect="/ws"
     )
 
-@rt("/switches-s")
-def get_switches_s():
-    return Title("MATSYA 6000 View - Switches_S"), Div(
-        AppLayout(active_tab="Switches_S"), id="ws-container", hx_ext="ws", ws_connect="/ws"
+@rt("/switches-p2")
+def get_switches_p2():
+    return Title("MATSYA 6000 View - Switches_P2"), Div(
+        AppLayout(active_tab="Switches_P2"), id="ws-container", hx_ext="ws", ws_connect="/ws"
+    )
+
+@rt("/switches-p3")
+def get_switches_p3():
+    return Title("MATSYA 6000 View - Switches_P3"), Div(
+        AppLayout(active_tab="Switches_P3"), id="ws-container", hx_ext="ws", ws_connect="/ws"
+    )
+
+@rt("/switches-s1")
+def get_switches_s1():
+    return Title("MATSYA 6000 View - Switches_S1"), Div(
+        AppLayout(active_tab="Switches_S1"), id="ws-container", hx_ext="ws", ws_connect="/ws"
+    )
+
+@rt("/switches-s2")
+def get_switches_s2():
+    return Title("MATSYA 6000 View - Switches_S2"), Div(
+        AppLayout(active_tab="Switches_S2"), id="ws-container", hx_ext="ws", ws_connect="/ws"
+    )
+
+@rt("/switches-s3")
+def get_switches_s3():
+    return Title("MATSYA 6000 View - Switches_S3"), Div(
+        AppLayout(active_tab="Switches_S3"), id="ws-container", hx_ext="ws", ws_connect="/ws"
     )
 
 
@@ -1906,8 +2050,12 @@ async def simulate_data():
         await broadcast(AppLayout(active_tab="Status"))
         await broadcast(AppLayout(active_tab="50 Kwh"))
         await broadcast(AppLayout(active_tab="MCC"))
-        await broadcast(AppLayout(active_tab="Switches_P"))
-        await broadcast(AppLayout(active_tab="Switches_S"))
+        await broadcast(AppLayout(active_tab="Switches_P1"))
+        await broadcast(AppLayout(active_tab="Switches_P2"))
+        await broadcast(AppLayout(active_tab="Switches_P3"))
+        await broadcast(AppLayout(active_tab="Switches_S1"))
+        await broadcast(AppLayout(active_tab="Switches_S2"))
+        await broadcast(AppLayout(active_tab="Switches_S3"))
         
         if not sim_global.paused:
             idx += 1
@@ -1944,12 +2092,17 @@ async def toggle_power():
     await broadcast(AppLayout(active_tab="Status"))
     await broadcast(AppLayout(active_tab="50 Kwh"))
     await broadcast(AppLayout(active_tab="MCC"))
-    await broadcast(AppLayout(active_tab="Switches_P"))
-    await broadcast(AppLayout(active_tab="Switches_S"))
+    await broadcast(AppLayout(active_tab="Switches_P1"))
+    await broadcast(AppLayout(active_tab="Switches_P2"))
+    await broadcast(AppLayout(active_tab="Switches_P3"))
+    await broadcast(AppLayout(active_tab="Switches_S1"))
+    await broadcast(AppLayout(active_tab="Switches_S2"))
+    await broadcast(AppLayout(active_tab="Switches_S3"))
     return ""
 
 
-@rt("/api/toggle_joystick", methods=["POST"])
+
+
 async def toggle_joystick():
     s = app_state.sidebar
     s.joystick = not s.joystick
@@ -1977,15 +2130,18 @@ async def toggle_high_speed():
 
 
 @rt("/api/toggle/{state_path:path}", methods=["POST"])
-async def generic_toggle(state_path: str):
-    """Generic endpoint to toggle booleans anywhere in app_state by dot-separated path."""
+async def generic_toggle(state_path: str, val: str = None):
+    """Generic endpoint to toggle booleans or set string values anywhere in app_state by dot-separated path."""
     parts = state_path.split(".")
     obj = app_state
     for p in parts[:-1]:
         obj = getattr(obj, p)
     
-    val = getattr(obj, parts[-1])
-    setattr(obj, parts[-1], not val)
+    if val is not None:
+        setattr(obj, parts[-1], val)
+    else:
+        current_val = getattr(obj, parts[-1])
+        setattr(obj, parts[-1], not current_val)
 
     # Broadcast updated layouts
     await broadcast(AppLayout(active_tab="Main"))
@@ -1999,33 +2155,14 @@ async def generic_toggle(state_path: str):
     await broadcast(AppLayout(active_tab="Status"))
     await broadcast(AppLayout(active_tab="50 Kwh"))
     await broadcast(AppLayout(active_tab="MCC"))
-    await broadcast(AppLayout(active_tab="Switches_P"))
-    await broadcast(AppLayout(active_tab="Switches_S"))
+    await broadcast(AppLayout(active_tab="Switches_P1"))
+    await broadcast(AppLayout(active_tab="Switches_P2"))
+    await broadcast(AppLayout(active_tab="Switches_P3"))
+    await broadcast(AppLayout(active_tab="Switches_S1"))
+    await broadcast(AppLayout(active_tab="Switches_S2"))
+    await broadcast(AppLayout(active_tab="Switches_S3"))
     return ""
 
-
-
-@rt("/api/scenario/start_powering_matsya", methods=["POST"])
-async def start_powering_matsya():
-    """Launch the POWERING MATSYA scenario in the background."""
-    global scenario_task
-    if scenario_task and not scenario_task.done():
-        return ""   # already running
-    scenario_task = asyncio.create_task(
-        run_powering_matsya_scenario(app_state, broadcast_all_layouts)
-    )
-    return ""
-
-
-@rt("/api/scenario/abort", methods=["POST"])
-async def abort_scenario():
-    """Cancel any running scenario and reset state."""
-    global scenario_task
-    if scenario_task and not scenario_task.done():
-        scenario_task.cancel()
-    reset_scenario(scenario_state)
-    await broadcast_all_layouts()
-    return ""
 
 
 @rt("/api/start_sim", methods=["GET", "POST"])

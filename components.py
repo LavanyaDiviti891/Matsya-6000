@@ -208,6 +208,134 @@ def MetalSwitch(label, is_on, id_key=None, toggle_url=None):
     )
 
 
+def VoltageDisplay(label, value, unit="V", id_key=None):
+    """A display component showing a voltage reading."""
+    attrs = {"cls": "voltage-display-container"}
+    if id_key:
+        attrs["id"] = id_key
+        attrs["hx_swap_oob"] = "true"
+        
+    return Div(
+        Span(label, cls="voltage-display-label"),
+        Div(
+            Span(fmt_val(value), cls="voltage-display-value"),
+            Span(unit, cls="voltage-display-unit"),
+            cls="voltage-display-box"
+        ),
+        **attrs
+    )
+
+def InsulationDisplay(label, value, unit="ohm", id_key=None):
+    """Yellow Insulation display mimicking Bender ISOMETER."""
+    attrs = {"cls": "insulation-wrapper"}
+    if id_key:
+        attrs["id"] = id_key
+        attrs["hx_swap_oob"] = "true"
+        
+    return Div(
+        Div(
+            Div(
+                Div(cls="iso-led"), Div(cls="iso-led"), Div(cls="iso-led"),
+                cls="iso-led-row"
+            ),
+            Div(fmt_val(value), cls="iso-lcd"),
+            Div(
+                Div(cls="iso-btn"), Div(cls="iso-btn"), Div(cls="iso-btn"),
+                cls="iso-btn-row"
+            ),
+            cls="iso-yellow-box"
+        ),
+        Div(label, cls="tape-label bottom-label"),
+        Span(unit, cls="tape-label side-label"),
+        **attrs
+    )
+
+def BattManDisplay(label, value, unit="V", id_key=None):
+    """Round Mastervolt BattMan Pro display."""
+    attrs = {"cls": "battman-wrapper"}
+    if id_key:
+        attrs["id"] = id_key
+        attrs["hx_swap_oob"] = "true"
+        
+    return Div(
+        Div(
+            Div("MASTERVOLT", cls="battman-brand"),
+            Div(fmt_val(value), cls="battman-lcd"),
+            Div(
+                Div("◀", cls="battman-btn battman-arrow"),
+                Div("MENU", cls="battman-btn battman-menu"),
+                Div("▶", cls="battman-btn battman-arrow"),
+                cls="battman-btn-row"
+            ),
+            Div("BattMan Pro", cls="battman-model"),
+            cls="battman-gauge"
+        ),
+        Div(label, cls="tape-label bottom-label"),
+        **attrs
+    )
+
+def RedVoltageDisplay(label, value, unit="V", id_key=None):
+    """Red LED 7-segment style voltage display."""
+    attrs = {"cls": "red-led-wrapper"}
+    if id_key:
+        attrs["id"] = id_key
+        attrs["hx_swap_oob"] = "true"
+        
+    return Div(
+        Div(fmt_val(value), cls="red-led-lcd"),
+        Div(label, cls="tape-label bottom-label"),
+        Span(unit, cls="tape-label side-label"),
+        **attrs
+    )
+
+
+def RotarySwitch(label, levels, selected_level, id_key=None, toggle_url=None):
+    """A multi-level rotary switch component."""
+    attrs = {"cls": "rotary-switch-container"}
+    if id_key:
+        attrs["id"] = id_key
+        attrs["hx_swap_oob"] = "true"
+        
+    # Calculate rotation angle based on selected level
+    try:
+        idx = levels.index(selected_level)
+    except ValueError:
+        idx = 0
+    
+    if len(levels) <= 1:
+        angle = 0
+    else:
+        span = 60 if len(levels) == 2 else 90
+        step = span / (len(levels) - 1)
+        angle = - (span / 2) + (idx * step)
+
+    next_idx = (idx + 1) % len(levels)
+    next_val = levels[next_idx]
+    
+    if toggle_url:
+        attrs["hx_post"] = f"{toggle_url}?val={next_val}"
+        attrs["hx_swap"] = "none"
+        
+    labels = []
+    for i, level in enumerate(levels):
+        is_sel = "rotary-lbl-sel" if i == idx else ""
+        labels.append(Span(level, cls=f"rotary-label {is_sel}"))
+
+    return Div(
+        Span(label, cls="rotary-switch-title"),
+        Div(
+            Div(*labels, cls="rotary-labels-row"),
+            Div(
+                Div(cls="rotary-knob-indicator"),
+                cls="rotary-knob",
+                style=f"transform: rotate({angle}deg);"
+            ),
+            cls="rotary-switch-body"
+        ),
+        **attrs
+    )
+
+
 def BottomTabsNav(tabs, active_tab="Main"):
     """Bottom footer with segmented navigation"""
     nav_links = []
@@ -235,10 +363,18 @@ def BottomTabsNav(tabs, active_tab="Main"):
             url = "/50-kwh"
         elif t == "MCC":
             url = "/mcc"
-        elif t == "Switches_P":
-            url = "/switches-p"
-        elif t == "Switches_S":
-            url = "/switches-s"
+        elif t == "Switches_P1":
+            url = "/switches-p1"
+        elif t == "Switches_P2":
+            url = "/switches-p2"
+        elif t == "Switches_P3":
+            url = "/switches-p3"
+        elif t == "Switches_S1":
+            url = "/switches-s1"
+        elif t == "Switches_S2":
+            url = "/switches-s2"
+        elif t == "Switches_S3":
+            url = "/switches-s3"
         else:
             url = "#"
         nav_links.append(
