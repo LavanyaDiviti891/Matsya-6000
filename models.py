@@ -493,7 +493,7 @@ class MCCState(BaseModel):
     status: MCCStatus = MCCStatus()
 
 
-class SwitchesCategory(BaseModel):
+class SwitchesCategory_P(BaseModel):
     # Thruster Controls
     speed_control: bool = False
     heading_trim: bool = False
@@ -565,66 +565,120 @@ class SwitchesCategory(BaseModel):
     ab_p_power_selection: bool = False
     mb_p_pde_p: bool = False
 
+    # New additions
+    ib_insulation: float = 0.0
+    eb_b_status: float = 0.0
+    ub_voltage: float = 0.0
+    power_selection_eb: str = "1"
+    power_selection_ub: str = "1"
+    ub_mcb: bool = False
+
+class SwitchesCategory_S(BaseModel):
+    # Thruster Controls
+    speed_control: bool = False
+    heading_trim: bool = False
+    depth_trim: bool = False
+    lateral_trim: bool = False
+
+    # BATS Control
+    hp_as_on_off: bool = False
+    hp_bs_on_off: bool = False
+    hp_reg_set: bool = False
+    pitch_on_off: bool = False
+    vbt_set_value: bool = False
+    pitch_up_down_analog: bool = False
+    freeboard_s: bool = False
+    dive_in: bool = False
+    water_out_on_off: bool = False
+
+    # General control Switches
+    co2_scrubber_s: bool = False
+    joystick_enable: bool = False
+    pilot_selection: bool = False
+    copilot_selection: bool = False
+    vhs_power_s: bool = False
+    led_emergency_port: bool = False
+    uw_camera_s: bool = False
+    sonar: bool = False
+    surface_ins: bool = False
+
+    # Service Drop Weight Switches
+    port_side_sdw_1: bool = False
+    port_side_sdw_2: bool = False
+    port_side_sdw_3: bool = False
+    port_side_sdw_4: bool = False
+    port_side_sdw_5: bool = False
+    starboard_side_sdw_1: bool = False
+    starboard_side_sdw_2: bool = False
+    starboard_side_sdw_3: bool = False
+    starboard_side_sdw_4: bool = False
+    starboard_side_sdw_5: bool = False
+
+    # Emergency Jettisoning_S
+    ej_manipulator_1: bool = False
+    ej_manipulator_2: bool = False
+    ej_manipulator_3: bool = False
+    ej_manipulator_4: bool = False
+    ej_trim_system_1: bool = False
+    ej_trim_system_2: bool = False
+    ej_trim_system_3: bool = False
+    ej_trim_system_4: bool = False
+    em_buoy_release_1: bool = False
+    em_buoy_release_2: bool = False
+    em_buoy_release_3: bool = False
+    em_buoy_release_4: bool = False
+    ej_sampling_basket_1: bool = False
+    ej_sampling_basket_2: bool = False
+    ej_sampling_basket_3: bool = False
+    ej_sampling_basket_4: bool = False
+    em_drop_weight_s1_sc: bool = False
+    em_drop_weight_s2_pc: bool = False
+
+    # POWER DIRECT CONTROL_STARBOARD
+    mb_s_1: bool = False
+    mb_s_2: bool = False
+    mb_s_3: bool = False
+    mb_s_4: bool = False
+    mb_s_5: bool = False
+    ab_s_bms: bool = False
+    mb_s_bms: bool = False
+    ab_s_power_selection: bool = False
+    mb_s_pde_s: bool = False
+
+    # New additions
+    ib_insulation: float = 0.0
+    eb_b_status: float = 0.0
+    ub_voltage: float = 0.0
+    power_selection_eb: str = "1"
+    power_selection_ub: str = "1"
+    ub_mcb: bool = False
+
 class SwitchesState(BaseModel):
-    state: SwitchesCategory = SwitchesCategory()
+    p: SwitchesCategory_P = SwitchesCategory_P()
+    s: SwitchesCategory_S = SwitchesCategory_S()
 
 # ----------------- ROOT STATE -----------------
 class MatsyaUIState(BaseModel):
-
     is_powered_on: bool = False
-
     active_tab: str = "Main"
 
-    scenario_status: str = "IDLE"
-
-    current_checkpoint: int = 0
-
-    scenario_message: str = ""
-
-    drop_weight_port_1: bool = False
-    drop_weight_port_2: bool = False
-    drop_weight_port_3: bool = False
-    drop_weight_port_4: bool = False
-    drop_weight_port_5: bool = False
-
-    drop_weight_starboard_1: bool = False
-    drop_weight_starboard_2: bool = False
-    drop_weight_starboard_3: bool = False
-    drop_weight_starboard_4: bool = False
-    drop_weight_starboard_5: bool = False
-
     header: HeaderTelemetry = HeaderTelemetry()
-
     imu: IMUTelemetry = IMUTelemetry()
-
     bottom: BottomStrip = BottomStrip()
-
     propulsion: PropulsionTelemetry = PropulsionTelemetry()
-
     propulsion_detail: PropulsionDetailState = PropulsionDetailState()
-
     environment: EnvironmentTelemetry = EnvironmentTelemetry()
-
     sidebar: SidebarControls = SidebarControls()
-
     leds: LedIndicators = LedIndicators()
-
     hsss: HSSSTelemetry = HSSSTelemetry()
-
     ballast: BallastTelemetry = BallastTelemetry()
-
     power: PowerTelemetry = PowerTelemetry()
-
     imaging: ImagingState = ImagingState()
-
     sensors: SensorsState = SensorsState()
-
     logging: LoggingState = LoggingState()
-
     status: StatusState = StatusState()
-
     kwh: KwhState = KwhState()
-
     mcc: MCCState = MCCState()
-
     switches: SwitchesState = SwitchesState()
+
+
