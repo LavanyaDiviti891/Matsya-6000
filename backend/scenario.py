@@ -11,10 +11,10 @@ from typing import Optional
 class ScenarioState:
     active: bool = False
     mission_name: str = ""
-    timer_total: int = 900
-    timer_remaining: int = 900
-    target_depth: float = 250.0
-    depth_rate: float = 3.0
+    timer_total: int = 3600
+    timer_remaining: int = 3600
+    target_depth: float = 5500.0
+    depth_rate: float = 30.0
     success: Optional[bool] = None
     result_message: str = ""
     blink: bool = False
@@ -40,14 +40,28 @@ def reset_scenario(sc: ScenarioState) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_poweringup_scenario(app_state, broadcast_fn):
     try:
-        sc   = scenario_state
-        sw_p = app_state.switches.p
-        sw_s = app_state.switches.s
-        pwr  = app_state.power
+        sc         = scenario_state
+        sw_p       = app_state.switches.p
+        sw_s       = app_state.switches.s
+        sw3        = app_state.switches.sw3
+        img        = app_state.imaging
+        sen        = app_state.sensors.toggles
+        mcc        = app_state.mcc.indicators
+        mcc_status = app_state.mcc.status     
+        pwr        = app_state.power
+        ballast    = app_state.ballast        
+        prop       = app_state.propulsion     
+        pd         = app_state.propulsion_detail
+        sidebar    = app_state.sidebar
 
         # Config
-        READING_PAUSE_SECS = 6   
-        TOTAL_STAGES       = 62  # Matches all 62 steps of the SOP perfectly
+        READING_PAUSE_SECS = 4   
+        TOTAL_STAGES       = 113
+
+        # ── Helper Function for 3-Way Switches ──
+        def is_pc_on(val):
+            # Checks if the switch value matches common 'PC ON' states
+            return val in [1, True, "PC_ON", "PC ON", "pc_on", "1"]
 
         # ── Telemetry Injection Logic ──
         def inject_reading(name: str):
@@ -59,9 +73,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     "switches.p.eb_b_status": round(random.uniform(25.5, 27.0), 2),
                 }
             elif name == "eb_p_ir":
-                writes = {
-                    "switches.p.ib_insulation": round(random.uniform(1.8, 2.5), 2),
-                }
+                writes = {"switches.p.ib_insulation": round(random.uniform(1.8, 2.5), 2)}
             elif name == "ub_p":
                 writes = {
                     "power.ub_port.voltage.value": round(random.uniform(24.0, 24.5), 2),
@@ -75,9 +87,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     "switches.s.eb_s_status": round(random.uniform(25.5, 27.0), 2),
                 }
             elif name == "eb_s_ir":
-                writes = {
-                    "switches.s.eb_s_insulation": round(random.uniform(1.8, 2.5), 2),
-                }
+                writes = {"switches.s.eb_s_insulation": round(random.uniform(1.8, 2.5), 2)}
             elif name == "ub_s":
                 writes = {
                     "power.ub_stbd.voltage.value": round(random.uniform(24.0, 24.5), 2),
@@ -139,6 +149,99 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     "power.ide_s.current.value": round(random.uniform(0.8, 1.9), 2),
                     "power.ide_s.ir.value": round(random.uniform(1.6, 2.8), 2),
                 }
+            elif name == "depth_sensor":
+                writes = {"header.depth.value": round(random.uniform(0.0, 1.5), 2)}
+            elif name == "led_p2":
+                writes = {"imaging.led_p2.dim": 75.0}
+            elif name == "led_p3":
+                writes = {"imaging.led_p3.dim": 80.0}
+            elif name == "led_p1_toggle":
+                writes = {"imaging.led_p1.dim": 100.0}
+            elif name == "led_s2":
+                writes = {"imaging.led_s2.dim": 75.0}
+            elif name == "led_s3":
+                writes = {"imaging.led_s3.dim": 80.0}
+            elif name == "led_s1_toggle":
+                writes = {"imaging.led_s1.dim": 100.0}
+            elif name == "ctd_p":
+                writes = {
+                    "sensors.scientific.conductivity.port": round(random.uniform(4.2, 4.8), 2),
+                    "sensors.scientific.ctd_temp.port": round(random.uniform(22.1, 24.5), 2),
+                    "sensors.scientific.pressure.port": round(random.uniform(1.0, 1.2), 2),
+                    "sensors.scientific.salinity.port": round(random.uniform(34.1, 35.3), 2),
+                    "sensors.scientific.turbidity.port": round(random.uniform(0.1, 0.3), 2),
+                }
+            elif name == "do_s":
+                writes = {
+                    "sensors.scientific.dissolved_oxygen.stbd": round(random.uniform(5.1, 5.8), 2),
+                }
+            elif name == "surface_ins":
+                writes = {
+                    "sensors.surface_ins.s_roll": round(random.uniform(-0.5, 0.5), 2),
+                    "sensors.surface_ins.s_pitch": round(random.uniform(-0.4, 0.4), 2),
+                    "sensors.surface_ins.s_heading": round(random.uniform(120.0, 125.0), 2),
+                }
+            elif name == "subsea_gps":
+                writes = {
+                    "sensors.subsea_gps.gps_latitude": round(random.uniform(12.9, 13.1), 5),
+                    "sensors.subsea_gps.gps_longitude": round(random.uniform(80.2, 80.4), 5),
+                }
+            elif name == "redt_depth":
+                writes = {"sensors.redt_depth.s_depth": round(random.uniform(0.0, 1.5), 2)}
+            elif name == "ins_p":
+                writes = {"imu.heading_p.value": round(random.uniform(120.0, 125.0), 2)}
+            elif name == "dvl_p":
+                writes = {
+                    "bottom.east_speed.value": 0.0,
+                    "bottom.north_speed.value": 0.0,
+                    "bottom.vert_speed.value": 0.0,
+                }
+            elif name == "altimeter_s":
+                writes = {"header.altitude.value": 0.0}
+            elif name == "acoustic_modem":
+                writes = {
+                    "mcc.status.ship_latitude": round(random.uniform(12.9, 13.1), 5),
+                    "mcc.status.ship_longitude": round(random.uniform(80.2, 80.4), 5),
+                }
+            elif name == "mbs_active":
+                writes = {
+                    "ballast.main_ballast.read_pressure_s": round(random.uniform(240.0, 250.0), 1),
+                    "ballast.main_ballast.read_pressure_p": round(random.uniform(240.0, 250.0), 1),
+                }
+            elif name == "ready_to_dive":
+                writes = {"header.depth.value": 1.0, "header.altitude.value": 5499.0}
+            elif name == "initiate_dive":
+                writes = {"header.depth.value": 5.0}
+            elif name == "thrusters_spin":
+                writes = {
+                    "propulsion.t1_rpm": round(random.uniform(60, 70), 1),
+                    "propulsion.t2_rpm": round(random.uniform(60, 70), 1),
+                    "propulsion.t3_rpm": round(random.uniform(60, 70), 1),
+                    "propulsion.t4_rpm": round(random.uniform(60, 70), 1),
+                    "propulsion.t5_rpm": round(random.uniform(60, 70), 1),
+                    "propulsion.t6_rpm": round(random.uniform(60, 70), 1),
+                    "propulsion.t7_rpm": round(random.uniform(60, 70), 1),
+                    "propulsion.t8_rpm": round(random.uniform(60, 70), 1),
+                }
+            elif name == "joystick_fwd":
+                writes = {"bottom.north_speed.value": round(random.uniform(1.2, 1.8), 2)}
+            elif name == "joystick_vert":
+                writes = {"bottom.vert_speed.value": round(random.uniform(0.5, 1.0), 2)}
+            elif name == "joystick_lat":
+                writes = {"bottom.east_speed.value": round(random.uniform(0.8, 1.2), 2)}
+            elif name == "depth_seabed":
+                writes = {"header.depth.value": 5450.0}
+            elif name == "sampling_seabed":
+                writes = {"header.depth.value": 5500.0, "header.altitude.value": 0.5}
+            elif name == "ascent_start":
+                writes = {"header.depth.value": 5400.0}
+            elif name == "surfaced":
+                writes = {
+                    "header.depth.value": 0.0, 
+                    "ballast.main_ballast.read_pressure_s": round(random.uniform(200.0, 210.0), 1)
+                }
+            elif name == "freeboard":
+                writes = {"header.depth.value": -1.5}
 
             for path, val in writes.items():
                 try:
@@ -163,9 +266,9 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
         # ── Initialize State ──────────────────────────────────────────────────
         sc.active          = True
         sc.success         = None
-        sc.mission_name    = "POWERING MATSYA (FULL 62-STEP SOP)"
-        sc.timer_total     = 900
-        sc.timer_remaining = 900
+        sc.mission_name    = "FULL MATSYA SEQUENCE - MANUAL TRIGGERS (113 STEPS)"
+        sc.timer_total     = 3600
+        sc.timer_remaining = 3600
         sc.result_message  = ""
         sc.current_stage   = 1
         await broadcast_fn()
@@ -176,7 +279,9 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 sc.timer_remaining -= 1
                 sc.blink = not sc.blink
 
-                # ── PORT SIDE SYSTEM POWER UP SEQUENCE ──
+                # ─────────────────────────────────────────────────────────────
+                # POWER UP & OPS CHECKS (Steps 1 to 97)
+                # ─────────────────────────────────────────────────────────────
                 if sc.current_stage == 1:
                     sc.feedback_msg = "SOP Step 1: Visual Inspection - Confirm all switches are OFF before starting."
                     await confirm_and_advance("✅ Initial conditions verified.", None, 3)
@@ -253,7 +358,6 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     sc.feedback_msg = "SOP Step 17: Load Matsya6000 software on Pilot PC and read parameters."
                     await confirm_and_advance("✅ Data acquisition links to PS_P established.", None, 3)
 
-                # ── STARBOARD SIDE SYSTEM POWER UP SEQUENCE ──
                 elif sc.current_stage == 18:
                     sc.feedback_msg = "SOP Step 18: Set Power selection EB_S to Emergency Battery (E_Batts)."
                     if getattr(sw_s, "e_batt_s", False) is True:
@@ -338,7 +442,6 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     sc.feedback_msg = "SOP Step 36: Check and adjust the flow meter and Regulator for oxygen."
                     await confirm_and_advance("✅ Flow parameters confirmed in limits.", None, 3)
 
-                # ── PORT SIDE HIGH POWER (PDE / IDE) SEQUENCE ──
                 elif sc.current_stage == 37:
                     sc.feedback_msg = "SOP Step 37: Turn ON toggle switch MB_P_BMS for Main Battery Port BMS."
                     if getattr(sw_p, "mb_p_bms", False):
@@ -387,7 +490,6 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     sc.feedback_msg = "SOP Step 46: Verify telemetry and water ingress status loops for IDE_P."
                     await confirm_and_advance("✅ IDE_P data structures stable.", None, 3)
 
-                # ── STARBOARD SIDE HIGH POWER (PDE / IDE) SEQUENCE ──
                 elif sc.current_stage == 47:
                     sc.feedback_msg = "SOP Step 47: Turn ON toggle switch MB_S_BMS for Main Battery Starboard BMS."
                     if getattr(sw_s, "mb_s_bms", False):
@@ -436,9 +538,8 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     sc.feedback_msg = "SOP Step 56: Verify telemetry and water ingress status loops for IDE_S."
                     await confirm_and_advance("✅ IDE_S data structures stable.", None, 3)
 
-                # ── CRITICAL FINAL CHANGEOVERS ──
                 elif sc.current_stage == 57:
-                    sc.feedback_msg = "SOP Step 57: Comprehensive communication validation across all units (PS_P, PS_S, IDEs, PDEs)."
+                    sc.feedback_msg = "SOP Step 57: Comprehensive communication validation across all units."
                     await confirm_and_advance("✅ All active links report OK status.", None, 3)
 
                 elif sc.current_stage == 58:
@@ -446,7 +547,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     await confirm_and_advance("✅ Threshold check pass.", None, 3)
 
                 elif sc.current_stage == 59:
-                    sc.feedback_msg = "SOP Step 59: Change Position of Emergency Bus change over selectors EB_P & EB_S back to EB (E_Batts)."
+                    sc.feedback_msg = "SOP Step 59: Change Position of Emergency Bus change over selectors EB_P & EB_S back to EB."
                     if getattr(sw_p, "e_batts", False) is True and getattr(sw_s, "e_batt_s", False) is True:
                         await confirm_and_advance("✅ Emergency Bus switchover confirmed.", None, 3)
 
@@ -461,9 +562,319 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 62:
                     sc.feedback_msg = "SOP Step 62: Confirm Power and Control system is ready for Operational checks."
+                    await confirm_and_advance("✅ Main vehicle initialization complete. Advancing to Subsystem Checks.", None, 3)
+
+                elif sc.current_stage == 63:
+                    sc.feedback_msg = "SOP Step 63: Turn ON soft control button Depth_Primary in GUI MCC / Sensors page."
+                    if getattr(sen, "depth_sensor_pri", False) or getattr(mcc, "depth_sensor_pri_d", False):
+                        await confirm_and_advance("📈 Primary depth sensor online. Fiber optic Multiplexers powered.", "depth_sensor", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 64:
+                    sc.feedback_msg = "SOP Step 64: Turn ON toggle switch VHS_Pow_P in General control switches."
+                    if getattr(sw_p, "vhs_pow_p", False):
+                        await confirm_and_advance("✅ Video recorder power active in Port.", None, 2)
+
+                elif sc.current_stage == 65:
+                    sc.feedback_msg = "SOP Step 65: Turn ON toggle switch VHS_Pow_S in General control switches."
+                    if getattr(sw_s, "vhs_pow_s", False):
+                        await confirm_and_advance("✅ Video recorder power active in Starboard.", None, 2)
+
+                elif sc.current_stage == 66:
+                    sc.feedback_msg = "SOP Step 66: Turn ON soft control button HD CAM1_P in imaging page GUI."
+                    if getattr(img, "hd_camera_p", False) or getattr(mcc, "camera_4k_p_d", False):
+                        await confirm_and_advance("✅ HD Camera Port active. Zoom, focus, and iris controls verified.", None, 3)
+
+                elif sc.current_stage == 67:
+                    sc.feedback_msg = "SOP Step 67: Turn ON soft control button SD Camera P3 in imaging page GUI."
+                    if getattr(img, "hd_sdi_p3", False) or getattr(mcc, "hd_camera_p3_d", False):
+                        await confirm_and_advance("✅ SD Landing Camera Port active. Video feed verified.", None, 2)
+
+                elif sc.current_stage == 68:
+                    sc.feedback_msg = "SOP Step 68: Turn ON soft control button SD Camera P4 in imaging page GUI."
+                    if getattr(img, "hd_sdi_p4", False) or getattr(mcc, "sd_camera_p4_d", False):
+                        await confirm_and_advance("✅ SD Fixed Camera Port active. Video feed verified.", None, 2)
+
+                elif sc.current_stage == 69:
+                    sc.feedback_msg = "SOP Step 69: Turn ON soft control button HD CAM1_S in imaging page GUI."
+                    if getattr(img, "hd_camera_s", False) or getattr(mcc, "camera_4k_s_d", False):
+                        await confirm_and_advance("✅ HD Camera Starboard active. Lens controls verified.", None, 3)
+
+                elif sc.current_stage == 70:
+                    sc.feedback_msg = "SOP Step 70: Turn ON soft control button SD Camera S3 in imaging page GUI."
+                    if getattr(img, "hd_sdi_s3", False):
+                        await confirm_and_advance("✅ SD Landing Camera Starboard active. Video feed verified.", None, 2)
+
+                elif sc.current_stage == 71:
+                    sc.feedback_msg = "SOP Step 71: Turn ON soft control button SD Camera S4 in imaging page GUI."
+                    if getattr(img, "hd_sdi_s2", False) or getattr(mcc, "sd_camera_s4_d", False): 
+                        await confirm_and_advance("✅ SD Fixed Camera Starboard active. Video feed verified.", None, 2)
+
+                elif sc.current_stage == 72:
+                    sc.feedback_msg = "SOP Step 72: Turn ON soft control button LED Light P2 in imaging page GUI."
+                    if getattr(img.led_p2, "power", False) or getattr(mcc, "led_light_p2_d", False):
+                        await confirm_and_advance("💡 Underwater LED Light Port 2 active.", "led_p2", 2)
+
+                elif sc.current_stage == 73:
+                    sc.feedback_msg = "SOP Step 73: Turn ON soft control button LED Light P3 in imaging page GUI."
+                    if getattr(img.led_p3, "power", False) or getattr(mcc, "led_light_p3_d", False):
+                        await confirm_and_advance("💡 Underwater LED Light Port 3 active.", "led_p3", 2)
+
+                elif sc.current_stage == 74:
+                    sc.feedback_msg = "SOP Step 74: Turn ON soft control button LED Light P4 in imaging page GUI."
+                    await confirm_and_advance("💡 Underwater LED Light Port 4 active (Auto-advance).", None, 3)
+
+                elif sc.current_stage == 75:
+                    sc.feedback_msg = "SOP Step 75: Turn ON toggle switch LED Light P1 in general switches at PS."
+                    if getattr(sw_p, "uw_led_p", False):
+                        await confirm_and_advance("💡 Underwater LED Light Port 1 active via switch.", "led_p1_toggle", 2)
+
+                elif sc.current_stage == 76:
+                    sc.feedback_msg = "SOP Step 76: Turn ON soft control button LED Light S2 in imaging page GUI."
+                    if getattr(img.led_s2, "power", False) or getattr(mcc, "led_light_s2_d", False):
+                        await confirm_and_advance("💡 Underwater LED Light Starboard 2 active.", "led_s2", 2)
+
+                elif sc.current_stage == 77:
+                    sc.feedback_msg = "SOP Step 77: Turn ON soft control button LED Light S3 in imaging page GUI."
+                    if getattr(img.led_s3, "power", False) or getattr(mcc, "led_light_s3_d", False):
+                        await confirm_and_advance("💡 Underwater LED Light Starboard 3 active.", "led_s3", 2)
+
+                elif sc.current_stage == 78:
+                    sc.feedback_msg = "SOP Step 78: Turn ON soft control button LED Light S4 in imaging page GUI."
+                    await confirm_and_advance("💡 Underwater LED Light Starboard 4 active (Auto-advance).", None, 3)
+
+                elif sc.current_stage == 79:
+                    sc.feedback_msg = "SOP Step 79: Turn ON toggle switch LED Light S1 in general switches at PS."
+                    if getattr(sw_s, "uw_led_s", False):
+                        await confirm_and_advance("💡 Underwater LED Light Starboard 1 active via switch.", "led_s1_toggle", 2)
+
+                elif sc.current_stage == 80:
+                    sc.feedback_msg = "SOP Step 80: Switch ON soft control button Obstacle SONAR in imaging page GUI."
+                    if getattr(sen, "img_sonar", False):
+                        await confirm_and_advance("📡 Obstacle Avoidance Sonar active.", None, 3)
+
+                elif sc.current_stage == 81:
+                    sc.feedback_msg = "SOP Step 81: Turn ON/Check recording in HD video recorder in LHS."
+                    await confirm_and_advance("✅ HD recording status verified on Video Monitor 1 & 2.", None, 3)
+
+                elif sc.current_stage == 82:
+                    sc.feedback_msg = "SOP Step 82: Turn ON/Check recording in Analog video recorder in LHS."
+                    await confirm_and_advance("✅ Analog recording status verified on Video Monitor 2.", None, 3)
+
+                elif sc.current_stage == 83:
+                    sc.feedback_msg = "SOP Step 83: Check video Overlay status in LHS."
+                    await confirm_and_advance("⏱️ Date, time, and INS data alignment verified.", None, 3)
+
+                elif sc.current_stage == 84:
+                    sc.feedback_msg = "SOP Step 84: Turn ON soft control button CTD_P in Sensor / MCC page GUI."
+                    if getattr(sen, "ctdo", False) or getattr(mcc, "ctdo_d", False):
+                        await confirm_and_advance("📈 CTD Port sensor online.", "ctd_p", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 85:
+                    sc.feedback_msg = "SOP Step 85: Turn ON soft control button DO_S in sensor / MCC page GUI."
+                    if getattr(sen, "dissolved_o2", False) or getattr(mcc, "dissolved_o2_d", False):
+                        await confirm_and_advance("📈 Starboard Dissolved Oxygen sensor active.", "do_s", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 86:
+                    sc.feedback_msg = "SOP Step 86: Turn ON toggle switch Surface INS in general switches."
+                    await confirm_and_advance("📈 Surface INS active (Auto-advance).", "surface_ins", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 87:
+                    sc.feedback_msg = "SOP Step 87: Turn ON toggle switch Subsea GPS in general switches."
+                    await confirm_and_advance("📈 Subsea GPS powered (Auto-advance).", "subsea_gps", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 88:
+                    sc.feedback_msg = "SOP Step 88: Turn ON toggle switch Redt Depth in general switches."
+                    await confirm_and_advance("📈 Redundant depth sensor loop verified (Auto-advance).", "redt_depth", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 89:
+                    sc.feedback_msg = "SOP Step 89: Turn ON soft control button INS_P in sensors / MCC page GUI."
+                    if getattr(sen, "ins", False) or getattr(mcc, "ins_d", False):
+                        await confirm_and_advance("📈 INS-DVL powered in IDE_P.", "ins_p", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 90:
+                    sc.feedback_msg = "SOP Step 90: Turn ON soft control button DVL_P in sensors / MCC page GUI."
+                    if getattr(sen, "dvl", False) or getattr(mcc, "dvl_d", False):
+                        await confirm_and_advance("📈 DVL tracking operational.", "dvl_p", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 91:
+                    sc.feedback_msg = "SOP Step 91: Turn ON soft control button Altimeter_S in sensors / MCC page GUI."
+                    if getattr(sen, "altimeter", False) or getattr(mcc, "altimeter_d", False):
+                        await confirm_and_advance("📈 Altimeter operational.", "altimeter_s", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 92:
+                    sc.feedback_msg = "SOP Step 92: Power ON soft button Acoustic modem (APS2) in sensors / MCC page GUI."
+                    if getattr(sw_s, "aps_2", False) or getattr(mcc_status, "acoustic_comm_auto", False):
+                        await confirm_and_advance("📡 Acoustic modem links established.", "acoustic_modem", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 93:
+                    sc.feedback_msg = "SOP Step 93: Turn ON subsea VHF receiver in PS for surface voice checks."
+                    if getattr(sw_s, "vhf", False):
+                        await confirm_and_advance("🔊 Subsea VHF voice loop established.", None, 3)
+
+                elif sc.current_stage == 94:
+                    sc.feedback_msg = "SOP Step 94: Turn ON shallow water underwater acoustic telephone (SUAT) in LHS."
+                    if getattr(sw_s, "uwt", False):
+                        await confirm_and_advance("✅ Subsytem operational checks successfully completed!", None, 2)
+
+                elif sc.current_stage == 95:
+                    sc.feedback_msg = "Phase 1: Inspect Penetrator Plates, then turn ON Dive-In switch (SW3)."
+                    if getattr(sw3, "dive_in_on", False):
+                        await confirm_and_advance("✅ Dive-In Switch toggled ON. Penetrator plates verified.", None, 2)
+
+                elif sc.current_stage == 96:
+                    sc.feedback_msg = "Phase 1: Verify Life Support System fully functional before maneuvering."
+                    await confirm_and_advance("✅ Life Support systems holding nominal parameters.", None, 3)
+
+                elif sc.current_stage == 97:
+                    sc.feedback_msg = "Phase 1: Power Main Ballast - Turn ON MBS soft control button in Ballast / Sensors GUI."
+                    if getattr(sen, "mbs", False) or getattr(sw_s, "mbs_ctrl", False):
+                        await confirm_and_advance("📈 Main Ballast powered. Recording air bottle pressure.", "mbs_active", READING_PAUSE_SECS)
+
+                # ─────────────────────────────────────────────────────────────
+                # PHASE 2: AUTO-ADVANCING TANK FILLING ANIMATIONS & DESCENT
+                # ─────────────────────────────────────────────────────────────
+                elif sc.current_stage == 98:
+                    sc.feedback_msg = "Phase 2: Auto-Sequence 'Ready to Dive'. Flooding first six tanks..."
+                    await broadcast_fn()
+                    await asyncio.sleep(2.0)
+                    
+                    mb = getattr(ballast, "main_ballast", None)
+                    
+                    for i in range(1, 11):
+                        bars = "█" * i + "░" * (10 - i)
+                        sc.feedback_msg = f"🌊 Flooding 6 Side Tanks: [{bars}] {i*10}%"
+                        
+                        slider_val = 150 - (i * 30) 
+                        if mb:
+                            if hasattr(mb, "act3_pos"): mb.act3_pos = slider_val
+                            if hasattr(mb, "act3_pos2"): mb.act3_pos2 = slider_val
+                        
+                        await broadcast_fn()
+                        await asyncio.sleep(0.5) 
+                        
+                    await confirm_and_advance("✅ Six tanks flooded. Confirming neutral buoyancy and freeboard.", "ready_to_dive", 2)
+
+                elif sc.current_stage == 99:
+                    sc.feedback_msg = "Phase 2: Auto-Sequence 'Dive open'. Flooding 7th tank..."
+                    await broadcast_fn()
+                    await asyncio.sleep(2.0)
+                    
+                    mb = getattr(ballast, "main_ballast", None)
+
+                    for i in range(1, 11):
+                        bars = "█" * i + "░" * (10 - i)
+                        sc.feedback_msg = f"⏬ Venting 7th Tank: [{bars}] {i*10}%"
+                        
+                        slider_val = 150 - (i * 30) 
+                        if mb and hasattr(mb, "act3_pos3"): 
+                            mb.act3_pos3 = slider_val
+                            
+                        await broadcast_fn()
+                        await asyncio.sleep(0.4)
+                        
+                    await confirm_and_advance("✅ Negative buoyancy achieved. Beginning descent.", "initiate_dive", 2)
+
+                # ─────────────────────────────────────────────────────────────
+                # PROPULSION INTERLOCK CHECKS & SEABED
+                # ─────────────────────────────────────────────────────────────
+                elif sc.current_stage == 100:
+                    sc.feedback_msg = "Propulsion Check: Verify 148 VDC contactor is ON for Port & Stbd."
+                    if getattr(sw_p, "pde_p_148", False) and getattr(sw_s, "mb_s_pde_s", False):
+                        await confirm_and_advance("✅ 148 VDC Power confirmed active.", None, 2)
+
+                elif sc.current_stage == 101:
+                    sc.feedback_msg = "Propulsion Check: Enable the Thruster Enable interlock in Main GUI."
+                    if getattr(sidebar, "thrusters_enable", False):
+                        await confirm_and_advance("✅ Thruster master interlock ENABLED.", None, 2)
+
+                elif sc.current_stage == 102:
+                    sc.feedback_msg = "Propulsion Check: Power & Enable Thrusters. Operate at 60-70 RPM."
+                    if getattr(pd.t1, "power", False) and getattr(pd.t1, "enable", False):
+                        await confirm_and_advance("✅ Thrusters powered and enabled. RPM feedback verified.", "thrusters_spin", READING_PAUSE_SECS)
+
+                elif sc.current_stage == 103:
+                    sc.feedback_msg = "Propulsion Check: Enable the Joystick in the Main GUI."
+                    if getattr(sidebar, "joystick", False):
+                        await confirm_and_advance("✅ Joystick control ENABLED.", None, 2)
+
+                # ─────────────────────────────────────────────────────────────
+                # PHASE 4 & 5: SEABED OPERATIONS & ASCENT (Steps 104 - 106)
+                # ─────────────────────────────────────────────────────────────
+                elif sc.current_stage == 104:
+                    sc.feedback_msg = "Phase 4: Seabed Approach. Set Port 1 & Stbd 1 weights to PC ON."
+                    
+                    val_p1 = getattr(sw_p, "sdwp_1", None)
+                    # FIX: Read sdws_1 from sw_p
+                    val_s1 = getattr(sw_p, "sdws_1", None)
+
+                    if sc.timer_remaining % 5 == 0:
+                        print(f"[DEBUG Stage 104] Waiting for PC ON. Current -> sdwp_1: {val_p1} | sdws_1: {val_s1}")
+
+                    if is_pc_on(val_p1) and is_pc_on(val_s1):
+                        await confirm_and_advance("⚓ Approaching Seabed. 100kg weights dropped. Buoyancy neutralized.", "depth_seabed", 3)
+
+                elif sc.current_stage == 105:
+                    sc.feedback_msg = "Phase 4: Seabed Sampling. Set Port 2, 3 & Stbd 2, 3 weights to PC ON."
+                    
+                    val_p2, val_p3 = getattr(sw_p, "sdwp_2", None), getattr(sw_p, "sdwp_3", None)
+                    # FIX: Read sdws_2 and sdws_3 from sw_p
+                    val_s2, val_s3 = getattr(sw_p, "sdws_2", None), getattr(sw_p, "sdws_3", None)
+
+                    if sc.timer_remaining % 5 == 0:
+                        print(f"[DEBUG Stage 105] Waiting for PC ON. Port 2,3: {val_p2},{val_p3} | Stbd 2,3: {val_s2},{val_s3}")
+
+                    if is_pc_on(val_p2) and is_pc_on(val_p3) and is_pc_on(val_s2) and is_pc_on(val_s3):
+                        await confirm_and_advance("🔬 Seabed reached (5500m). Payload sampling complete. 200kg weights dropped.", "sampling_seabed", 3)
+
+                elif sc.current_stage == 106:
+                    sc.feedback_msg = "Phase 5: Start Ascent. Set Port 4, 5 & Stbd 4, 5 weights to PC ON."
+                    
+                    val_p4, val_p5 = getattr(sw_p, "sdwp_4", None), getattr(sw_p, "sdwp_5", None)
+                    # FIX: Read sdws_4 and sdws_5 from sw_p
+                    val_s4, val_s5 = getattr(sw_p, "sdws_4", None), getattr(sw_p, "sdws_5", None)
+
+                    if sc.timer_remaining % 5 == 0:
+                        print(f"[DEBUG Stage 106] Waiting for PC ON. Port 4,5: {val_p4},{val_p5} | Stbd 4,5: {val_s4},{val_s5}")
+
+                    if is_pc_on(val_p4) and is_pc_on(val_p5) and is_pc_on(val_s4) and is_pc_on(val_s5):
+                        await confirm_and_advance("🚀 300kg dropped. Positive buoyancy achieved. Beginning ascent.", "ascent_start", 3)
+
+                # ─────────────────────────────────────────────────────────────
+                # PHASE 5: AUTO-ADVANCING SURFACING ANIMATIONS
+                # ─────────────────────────────────────────────────────────────
+                elif sc.current_stage == 107:
+                    sc.feedback_msg = "Phase 5: Surface Reached. Auto-Sequence 'Surface open'..."
+                    await broadcast_fn()
+                    await asyncio.sleep(2.0)
+                    
+                    mb = getattr(ballast, "main_ballast", None)
+
+                    for i in range(1, 11):
+                        bars = "█" * i + "░" * (10 - i)
+                        sc.feedback_msg = f"🌊 Blowing Ballast Tanks (Emptying): [{bars}] {i*10}%"
+                        
+                        slider_val = -150 + (i * 30) 
+                        if mb:
+                            if hasattr(mb, "act3_pos"): mb.act3_pos = slider_val
+                            if hasattr(mb, "act3_pos2"): mb.act3_pos2 = slider_val
+                            if hasattr(mb, "act3_pos3"): mb.act3_pos3 = slider_val
+                            
+                        await broadcast_fn()
+                        await asyncio.sleep(0.4)
+                        
+                    await confirm_and_advance("✅ Surfaced. Main Ballast active.", "surfaced", 2)
+
+                # FIX: Increment numbering (changed from 107 to 108 to fix duplicated elif blocks)
+                elif sc.current_stage == 108:
+                    sc.feedback_msg = "Phase 5: Blow Ballast (Freeboard). Turn ON FREEBOARD button."
+                    if getattr(sw3, "freeboard_p", False) or getattr(sw3, "freeboard_s", False):
+                        await confirm_and_advance("💨 Tanks blown. Freeboard established at 1.5m.", "freeboard", READING_PAUSE_SECS)
+
+                # FIX: Increment numbering (changed from 108 to 109)
+                elif sc.current_stage == 109:
                     sc.success = True
                     sc.active = False
-                    sc.result_message = "✅ Vehicle powered successfully! All 62 Steps Complete."
+                    sc.result_message = "✅ FULL MISSION SUCCESS! Powering, Ops Checks, and 5500m Dive complete."
                     await broadcast_fn()
                     await asyncio.sleep(8)
                     reset_scenario(sc)

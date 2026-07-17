@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-
+from pydantic import BaseModel
+from typing import Union
 
 # ----------------- ATOMIC TYPES -----------------
 class NumericTelemetry(BaseModel):
@@ -531,28 +532,28 @@ class SwitchesCategory_P(BaseModel):
     pde_p_148: bool = False
     pde_p_24v_main: bool = False
     
-    # Service Drop Weights (Port and Stbd routed through P)
-    sdwp_1: bool = False
-    sdwp_2: bool = False
-    sdwp_3: bool = False
-    sdwp_4: bool = False
-    sdwp_5: bool = False
-    sdwp_6: bool = False
-    sdwp_7: bool = False
-    sdwp_8: bool = False
-    sdwp_9: bool = False
-    sdwp_10: bool = False
+# Service Drop Weights (Port and Stbd routed through P)
+    sdwp_1: Union[bool, str, int] = False
+    sdwp_2: Union[bool, str, int] = False
+    sdwp_3: Union[bool, str, int] = False
+    sdwp_4: Union[bool, str, int] = False
+    sdwp_5: Union[bool, str, int] = False
+    sdwp_6: Union[bool, str, int] = False
+    sdwp_7: Union[bool, str, int] = False
+    sdwp_8: Union[bool, str, int] = False
+    sdwp_9: Union[bool, str, int] = False
+    sdwp_10: Union[bool, str, int] = False
     
-    sdws_1: bool = False
-    sdws_2: bool = False
-    sdws_3: bool = False
-    sdws_4: bool = False
-    sdws_5: bool = False
-    sdws_6: bool = False
-    sdws_7: bool = False
-    sdws_8: bool = False
-    sdws_9: bool = False
-    sdws_10: bool = False
+    sdws_1: Union[bool, str, int] = False
+    sdws_2: Union[bool, str, int] = False
+    sdws_3: Union[bool, str, int] = False
+    sdws_4: Union[bool, str, int] = False
+    sdws_5: Union[bool, str, int] = False
+    sdws_6: Union[bool, str, int] = False
+    sdws_7: Union[bool, str, int] = False
+    sdws_8: Union[bool, str, int] = False
+    sdws_9: Union[bool, str, int] = False
+    sdws_10: Union[bool, str, int] = False
     
     # SDW Masters
     sdw_master_p: bool = False
