@@ -8,11 +8,9 @@ import re
 import json
 import glob
 from datetime import datetime
-from dataclasses import asdict
 
 from models import MatsyaUIState
-# Import scenario state, reset utility, and the main async runner
-from scenario import scenario_state, run_poweringup_scenario, reset_scenario
+from scenario import run_poweringup_scenario, reset_scenario
 
 app = FastAPI()
 
@@ -35,10 +33,8 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     connected_clients.add(websocket)
     try:
-        # Send initial state with scenario data injected
-        data = app_state.model_dump()
-        data["scenario"] = asdict(scenario_state)
-        await websocket.send_json(data)
+        # Send initial state
+        await websocket.send_json(app_state.model_dump())
         while True:
             data = await websocket.receive_text()
             # We can handle client messages here if needed
@@ -49,12 +45,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def broadcast():
     if not connected_clients:
         return
-    
-    # Dump current vehicle state
     data = app_state.model_dump()
-    # Merge scenario state into the payload so the frontend banner can read it
-    data["scenario"] = asdict(scenario_state)
-    
     disconnected = set()
     for client in connected_clients:
         try:
@@ -66,7 +57,7 @@ async def broadcast():
 
 # ----------------- APIs & SIMULATION -----------------
 simulator_task = None
-scenario_task = None  # Holds the running task for the background SOP checks
+scenario_task = None
 
 
 class SimState:
@@ -265,30 +256,6 @@ async def generic_toggle(state_path: str, val: Optional[str] = Form(None)):
     return {"status": "ok"}
 
 
-# ----------------- SCENARIO CONTROLS -----------------
-@app.post("/api/scenario/poweringup/start")
-async def start_scenario():
-    global scenario_task
-    if scenario_task is None or scenario_task.done():
-        # Spin up the powering up scenario as a background tracking task
-        scenario_task = asyncio.create_task(run_poweringup_scenario(app_state, broadcast))
-        return {"status": "Scenario started"}
-    return {"status": "Scenario already running"}
-
-
-@app.post("/api/scenario/poweringup/stop")
-async def stop_scenario():
-    global scenario_task
-    if scenario_task and not scenario_task.done():
-        scenario_task.cancel()
-        scenario_task = None
-    
-    reset_scenario(scenario_state)
-    await broadcast()
-    return {"status": "Scenario stopped"}
-
-
-# ----------------- SIMULATOR DIRECTIVES -----------------
 @app.api_route("/api/start_sim", methods=["GET", "POST"])
 async def start_sim():
     global simulator_task
@@ -334,3 +301,27 @@ async def sim_command(cmd: str):
     if cmd in ["start", "end"]:
         sim_global.command = cmd
     return {"status": "ok"}
+
+
+# ----------------- SCENARIO (SOP) -----------------
+@app.post("/api/scenario/poweringup/start")
+async def start_poweringup_scenario():
+    global scenario_task
+    if scenario_task is None or scenario_task.done():
+        reset_scenario(app_state.scenario)
+        scenario_task = asyncio.create_task(
+            run_poweringup_scenario(app_state, broadcast)
+        )
+        return {"status": "Scenario started"}
+    return {"status": "Scenario already running"}
+
+
+@app.post("/api/scenario/poweringup/stop")
+async def stop_poweringup_scenario():
+    global scenario_task
+    if scenario_task and not scenario_task.done():
+        scenario_task.cancel()
+        scenario_task = None
+    reset_scenario(app_state.scenario)
+    await broadcast()
+    return {"status": "Scenario stopped"}

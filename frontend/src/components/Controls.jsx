@@ -568,41 +568,49 @@ export function Buzzer({ label, isOn, idKey = null }) {
   );
 }
 
-export function RotarySwitch({ label, value, onChange, idKey = null, topLabel="1", rightLabel="2" }) {
+export function RotarySwitch({ label, value, onChange, idKey = null, topLabel="1", rightLabel="2", pos1Label="", pos2Label="" }) {
   const rotation = value === 1 ? -45 : 45;
   return (
     <div id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: '-25px', width: '100%', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
-        <div className="tape-label-real" style={getTapeStyle(label)}>{label}</div>
-      </div>
-      
-      {/* Square gray faceplate */}
-      <div
-        onClick={onChange}
-        style={{
-          position: 'relative', width: '100px', height: '100px', borderRadius: '8px',
-          background: '#4a4b4b', boxShadow: 'inset 0 0 2px rgba(255,255,255,0.2), 0 4px 6px rgba(0,0,0,0.5)',
-          border: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-        }}
-      >
-        <div style={{ position: 'absolute', top: '8px', left: '12px', fontSize: '14px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{topLabel}</div>
-        <div style={{ position: 'absolute', top: '8px', right: '12px', fontSize: '14px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{rightLabel}</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+        {/* Left Label */}
+        <div style={{ width: '80px', fontSize: '16px', fontWeight: 'bold', color: '#111', textAlign: 'right', whiteSpace: 'pre-wrap', marginRight: '10px', marginTop: '10px' }}>{pos1Label}</div>
+        
+        {/* Square gray faceplate */}
+        <div
+          onClick={onChange}
+          style={{
+            position: 'relative', width: '100px', height: '100px', borderRadius: '8px',
+            background: '#4a4b4b', boxShadow: 'inset 0 0 2px rgba(255,255,255,0.2), 0 4px 6px rgba(0,0,0,0.5)',
+            border: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+          }}
+        >
+          <div style={{ position: 'absolute', top: '8px', left: '12px', fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{topLabel}</div>
+          <div style={{ position: 'absolute', top: '8px', right: '12px', fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{rightLabel}</div>
 
-        {/* Knob */}
-        <div style={{
-          position: 'relative', width: '60px', height: '60px',
-          transform: `rotate(${rotation}deg)`, transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}>
-          <div style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%', borderRadius: '50%', background: '#1a1a1a', boxShadow: '2px 4px 6px rgba(0,0,0,0.8)' }}></div>
-          {/* Pointer handle */}
+          {/* Knob */}
           <div style={{
-            position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
-            width: '18px', height: '40px', borderRadius: '8px', background: '#1a1a1a',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.6)'
+            position: 'relative', width: '60px', height: '60px',
+            transform: `rotate(${rotation}deg)`, transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           }}>
-            <div style={{ position: 'absolute', top: '4px', left: '50%', transform: 'translateX(-50%)', width: '4px', height: '15px', borderRadius: '2px', background: '#e8e8e0' }}></div>
+            <div style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%', borderRadius: '50%', background: '#1a1a1a', boxShadow: '2px 4px 6px rgba(0,0,0,0.8)' }}></div>
+            {/* Pointer handle */}
+            <div style={{
+              position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
+              width: '18px', height: '40px', borderRadius: '8px', background: '#1a1a1a',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.6)'
+            }}>
+              <div style={{ position: 'absolute', top: '4px', left: '50%', transform: 'translateX(-50%)', width: '4px', height: '15px', borderRadius: '2px', background: '#e8e8e0' }}></div>
+            </div>
           </div>
         </div>
+
+        {/* Right Label */}
+        <div style={{ width: '80px', fontSize: '16px', fontWeight: 'bold', color: '#111', textAlign: 'left', whiteSpace: 'pre-wrap', marginLeft: '10px', marginTop: '10px' }}>{pos2Label}</div>
+      </div>
+
+      <div style={{ position: 'absolute', bottom: '-45px', width: '100%', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+        <div className="tape-label-real" style={{ fontSize: '15px', ...getTapeStyle(label) }}>{label}</div>
       </div>
     </div>
   );

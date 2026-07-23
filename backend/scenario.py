@@ -1,30 +1,18 @@
 import asyncio
 import random
 import traceback
-from dataclasses import dataclass
-from typing import Optional
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Scenario State
 # ─────────────────────────────────────────────────────────────────────────────
-@dataclass
-class ScenarioState:
-    active: bool = False
-    mission_name: str = ""
-    timer_total: int = 3600
-    timer_remaining: int = 3600
-    target_depth: float = 5500.0
-    depth_rate: float = 30.0
-    success: Optional[bool] = None
-    result_message: str = ""
-    blink: bool = False
-    current_stage: int = 1
-    feedback_msg: str = ""
-
-scenario_state = ScenarioState()
+# NOTE: The scenario's live state now lives on app_state.scenario itself
+# (a ScenarioTelemetry pydantic model defined in models.py), instead of a
+# separate module-level dataclass. This means it is automatically included
+# in app_state.model_dump() and broadcast to the frontend over the existing
+# /ws websocket with zero extra wiring in main.py.
 scenario_locked_paths: set[str] = set()
 
-def reset_scenario(sc: ScenarioState) -> None:
+def reset_scenario(sc) -> None:
     sc.active = False
     sc.success = None
     sc.mission_name = ""
@@ -40,7 +28,7 @@ def reset_scenario(sc: ScenarioState) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_poweringup_scenario(app_state, broadcast_fn):
     try:
-        sc         = scenario_state
+        sc         = app_state.scenario
         sw_p       = app_state.switches.p
         sw_s       = app_state.switches.s
         sw3        = app_state.switches.sw3
@@ -463,13 +451,13 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 41:
                     sc.feedback_msg = "SOP Step 41: Sequentially power UP Main Battery packs MB_P_1 through MB_P_5."
-                    if (getattr(sw_p, "mb_1", False) and getattr(sw_p, "mb_2", False) and 
-                        getattr(sw_p, "mb_3", False) and getattr(sw_p, "mb_4", False) and getattr(sw_p, "mb_5", False)):
+                    if (getattr(sw_p, "mb_p_1", False) and getattr(sw_p, "mb_p_2", False) and 
+                        getattr(sw_p, "mb_p_3", False) and getattr(sw_p, "mb_p_4", False) and getattr(sw_p, "mb_p_5", False)):
                         await confirm_and_advance("✅ All 5 Port Battery packs online.", None, 3)
 
                 elif sc.current_stage == 42:
                     sc.feedback_msg = "SOP Step 42: Turn ON (Pull UP) the contactor switch MB_P-PDE_P."
-                    if getattr(sw_p, "pde_p_148", False):
+                    if getattr(sw_p, "mb_p_pde_p", False):
                         await confirm_and_advance("📈 148V High Voltage Bus energized to Port Enclosures.", "pde_p", READING_PAUSE_SECS)
 
                 elif sc.current_stage == 43:
@@ -571,12 +559,12 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 64:
                     sc.feedback_msg = "SOP Step 64: Turn ON toggle switch VHS_Pow_P in General control switches."
-                    if getattr(sw_p, "vhs_pow_p", False):
+                    if getattr(sw_p, "vhs_power_p", False):
                         await confirm_and_advance("✅ Video recorder power active in Port.", None, 2)
 
                 elif sc.current_stage == 65:
                     sc.feedback_msg = "SOP Step 65: Turn ON toggle switch VHS_Pow_S in General control switches."
-                    if getattr(sw_s, "vhs_pow_s", False):
+                    if getattr(sw_s, "vhs_power_s", False):
                         await confirm_and_advance("✅ Video recorder power active in Starboard.", None, 2)
 
                 elif sc.current_stage == 66:
@@ -625,7 +613,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 75:
                     sc.feedback_msg = "SOP Step 75: Turn ON toggle switch LED Light P1 in general switches at PS."
-                    if getattr(sw_p, "uw_led_p", False):
+                    if getattr(sw_p, "uw_camera_p", False):
                         await confirm_and_advance("💡 Underwater LED Light Port 1 active via switch.", "led_p1_toggle", 2)
 
                 elif sc.current_stage == 76:
@@ -644,7 +632,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 79:
                     sc.feedback_msg = "SOP Step 79: Turn ON toggle switch LED Light S1 in general switches at PS."
-                    if getattr(sw_s, "uw_led_s", False):
+                    if getattr(sw_s, "uw_camera_s", False):
                         await confirm_and_advance("💡 Underwater LED Light Starboard 1 active via switch.", "led_s1_toggle", 2)
 
                 elif sc.current_stage == 80:
@@ -718,7 +706,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 95:
                     sc.feedback_msg = "Phase 1: Inspect Penetrator Plates, then turn ON Dive-In switch (SW3)."
-                    if getattr(sw3, "dive_in_on", False):
+                    if getattr(sw3, "dive_in", False):
                         await confirm_and_advance("✅ Dive-In Switch toggled ON. Penetrator plates verified.", None, 2)
 
                 elif sc.current_stage == 96:
@@ -779,7 +767,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 # ─────────────────────────────────────────────────────────────
                 elif sc.current_stage == 100:
                     sc.feedback_msg = "Propulsion Check: Verify 148 VDC contactor is ON for Port & Stbd."
-                    if getattr(sw_p, "pde_p_148", False) and getattr(sw_s, "mb_s_pde_s", False):
+                    if getattr(sw_p, "mb_p_pde_p", False) and getattr(sw_s, "mb_s_pde_s", False):
                         await confirm_and_advance("✅ 148 VDC Power confirmed active.", None, 2)
 
                 elif sc.current_stage == 101:
@@ -803,9 +791,9 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 104:
                     sc.feedback_msg = "Phase 4: Seabed Approach. Set Port 1 & Stbd 1 weights to PC ON."
                     
-                    val_p1 = getattr(sw_p, "sdwp_1", None)
+                    val_p1 = getattr(sw_p, "port_side_sdw_1", None)
                     # FIX: Read sdws_1 from sw_p
-                    val_s1 = getattr(sw_p, "sdws_1", None)
+                    val_s1 = getattr(sw_p, "starboard_side_sdw_1", None)
 
                     if sc.timer_remaining % 5 == 0:
                         print(f"[DEBUG Stage 104] Waiting for PC ON. Current -> sdwp_1: {val_p1} | sdws_1: {val_s1}")
@@ -816,9 +804,9 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 105:
                     sc.feedback_msg = "Phase 4: Seabed Sampling. Set Port 2, 3 & Stbd 2, 3 weights to PC ON."
                     
-                    val_p2, val_p3 = getattr(sw_p, "sdwp_2", None), getattr(sw_p, "sdwp_3", None)
+                    val_p2, val_p3 = getattr(sw_p, "port_side_sdw_2", None), getattr(sw_p, "port_side_sdw_3", None)
                     # FIX: Read sdws_2 and sdws_3 from sw_p
-                    val_s2, val_s3 = getattr(sw_p, "sdws_2", None), getattr(sw_p, "sdws_3", None)
+                    val_s2, val_s3 = getattr(sw_p, "starboard_side_sdw_2", None), getattr(sw_p, "starboard_side_sdw_3", None)
 
                     if sc.timer_remaining % 5 == 0:
                         print(f"[DEBUG Stage 105] Waiting for PC ON. Port 2,3: {val_p2},{val_p3} | Stbd 2,3: {val_s2},{val_s3}")
@@ -829,9 +817,9 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 106:
                     sc.feedback_msg = "Phase 5: Start Ascent. Set Port 4, 5 & Stbd 4, 5 weights to PC ON."
                     
-                    val_p4, val_p5 = getattr(sw_p, "sdwp_4", None), getattr(sw_p, "sdwp_5", None)
+                    val_p4, val_p5 = getattr(sw_p, "port_side_sdw_4", None), getattr(sw_p, "port_side_sdw_5", None)
                     # FIX: Read sdws_4 and sdws_5 from sw_p
-                    val_s4, val_s5 = getattr(sw_p, "sdws_4", None), getattr(sw_p, "sdws_5", None)
+                    val_s4, val_s5 = getattr(sw_p, "starboard_side_sdw_4", None), getattr(sw_p, "starboard_side_sdw_5", None)
 
                     if sc.timer_remaining % 5 == 0:
                         print(f"[DEBUG Stage 106] Waiting for PC ON. Port 4,5: {val_p4},{val_p5} | Stbd 4,5: {val_s4},{val_s5}")
@@ -913,8 +901,8 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
         print("🚨 SCENARIO TASK CRASHED! 🚨")
         traceback.print_exc()
         print("="*50 + "\n")
-        scenario_state.active = False
-        scenario_state.result_message = f"CRASH: {str(e)}"
+        app_state.scenario.active = False
+        app_state.scenario.result_message = f"CRASH: {str(e)}"
         try:
             await broadcast_fn()
         except:

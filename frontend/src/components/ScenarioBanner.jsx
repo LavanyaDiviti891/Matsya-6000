@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react' // 👈 Import useEffect
+import React from 'react'
 
 export function ScenarioBanner({ appState }) {
   const scenario = appState?.scenario
@@ -8,13 +8,12 @@ export function ScenarioBanner({ appState }) {
       .catch(e => console.error("Start failed", e))
   }
 
-  // 👇 Add this block to trigger the start automatically on mount
-  useEffect(() => {
-    // Optional: Check if a scenario is already active before trying to start one
-    if (scenario && !scenario.active) {
-        startScenario();
-    }
-  }, []); // Empty dependency array means this runs once when the component mounts
+  // NOTE: No longer auto-starts on mount. The banner now lives on the
+  // Main-2 tab only, so it mounts/unmounts every time the user switches
+  // tabs — an auto-start effect here would silently kick off (or restart)
+  // the SOP scenario on every visit. Starting is manual via the button,
+  // and the banner keeps showing live state regardless of which tab the
+  // user is on since the scenario itself runs on the backend.
 
   const stopScenario = () => {
     fetch('http://localhost:8000/api/scenario/poweringup/stop', { method: 'POST' })

@@ -1,6 +1,21 @@
 from pydantic import BaseModel
-from pydantic import BaseModel
-from typing import Union
+from typing import Optional
+
+
+# ----------------- SCENARIO STATE -----------------
+class ScenarioTelemetry(BaseModel):
+    active: bool = False
+    mission_name: str = ""
+    timer_total: int = 3600
+    timer_remaining: int = 3600
+    target_depth: float = 5500.0
+    depth_rate: float = 30.0
+    success: Optional[bool] = None
+    result_message: str = ""
+    blink: bool = False
+    current_stage: int = 1
+    feedback_msg: str = ""
+
 
 # ----------------- ATOMIC TYPES -----------------
 class NumericTelemetry(BaseModel):
@@ -494,216 +509,290 @@ class MCCState(BaseModel):
     status: MCCStatus = MCCStatus()
 
 
-from pydantic import BaseModel
-
 class SwitchesCategory_P(BaseModel):
-    # Rotary & Displays
+    # Thruster Controls
+    speed_control: bool = False
+    heading_trim: bool = False
+    depth_trim: bool = False
+    lateral_trim: bool = False
+
+    # BATS Control
+    hp_ap_on_off: bool = False
+    hp_bp_on_off: bool = False
+    hp_reg_set: bool = False
+    pitch_on_off: bool = False
+    vbt_set_value: bool = False
+    pitch_up_down_analog: bool = False
+    freeboard_p: bool = False
+    dive_in: bool = False
+    water_out_on_off: bool = False
+
+    # General control Switches
+    co2_scrubber_p: bool = False
+    joystick_enable: bool = False
+    pilot_selection: bool = False
+    copilot_selection: bool = False
+    vhs_power_p: bool = False
+    led_emergency_port: bool = False
+    uw_camera_p: bool = False
+    sonar: bool = False
+    surface_ins: bool = False
+
+    # Service Drop Weight Switches
+    port_side_sdw_1: bool = False
+    port_side_sdw_2: bool = False
+    port_side_sdw_3: bool = False
+    port_side_sdw_4: bool = False
+    port_side_sdw_5: bool = False
+    starboard_side_sdw_1: bool = False
+    starboard_side_sdw_2: bool = False
+    starboard_side_sdw_3: bool = False
+    starboard_side_sdw_4: bool = False
+    starboard_side_sdw_5: bool = False
+
+    # Emergency Jettisoning_P
+    ej_manipulator_1: bool = False
+    ej_manipulator_2: bool = False
+    ej_manipulator_3: bool = False
+    ej_manipulator_4: bool = False
+    ej_trim_system_1: bool = False
+    ej_trim_system_2: bool = False
+    ej_trim_system_3: bool = False
+    ej_trim_system_4: bool = False
+    em_buoy_release_1: bool = False
+    em_buoy_release_2: bool = False
+    em_buoy_release_3: bool = False
+    em_buoy_release_4: bool = False
+    ej_sampling_basket_1: bool = False
+    ej_sampling_basket_2: bool = False
+    ej_sampling_basket_3: bool = False
+    ej_sampling_basket_4: bool = False
+    em_drop_weight_p1_sc: bool = False
+    em_drop_weight_p2_pc: bool = False
+
+    # POWER DIRECT CONTROL_PORT
+    mb_p_1: bool = False
+    mb_p_2: bool = False
+    mb_p_3: bool = False
+    mb_p_4: bool = False
+    mb_p_5: bool = False
+    ab_p_bms: bool = False
+    mb_p_bms: bool = False
+    ab_p_power_selection: bool = False
+    mb_p_pde_p: bool = False
+
+    # New additions
+    ib_insulation: float = 0.0
+    eb_b_status: float = 0.0
+    ub_voltage: float = 0.0
+    power_selection_eb: str = "1"
+    power_selection_ub: str = "1"
+    ub_mcb: bool = False
+    
+    # Frontend aliases
     ab_p: bool = False
     e_batts: bool = False
-    ub_mcb: bool = False
-    ub_voltage: float = 22.4
-    eb_b_status: float = 0.0
-    ib_insulation: float = 0.0
-    
-    # Resets
+    ub_p_mcb: bool = False
+    ub_p_mcb2: bool = False
+    ub_p: bool = False
+
+    # Custom layout fields (mirrors SwitchesCategory_S)
     pde_p_olr_rst: bool = False
     oim_p_reset: bool = False
-    
-    # Breakers & Power (Middle Section)
-    ab_p_bms: bool = False
-    ab_p_power: bool = False
     pde_p_oim: bool = False
+    ab_p_power: bool = False
     ide_p_1: bool = False
-    ide_2: bool = False
-    spare_2: bool = False
-    oim_p: bool = False
-    spare_p: bool = False
-    wago_p: bool = False
-    
-    # Lower Status Toggles
-    pde_p_24v: bool = False
-    mb_p_bms: bool = False
-    mb_1: bool = False
-    mb_2: bool = False
-    mb_3: bool = False
-    mb_4: bool = False
-    mb_5: bool = False
-    pde_p_olr: bool = False
-    pde_p_148: bool = False
-    pde_p_24v_main: bool = False
-    
-# Service Drop Weights (Port and Stbd routed through P)
-    sdwp_1: Union[bool, str, int] = False
-    sdwp_2: Union[bool, str, int] = False
-    sdwp_3: Union[bool, str, int] = False
-    sdwp_4: Union[bool, str, int] = False
-    sdwp_5: Union[bool, str, int] = False
-    sdwp_6: Union[bool, str, int] = False
-    sdwp_7: Union[bool, str, int] = False
-    sdwp_8: Union[bool, str, int] = False
-    sdwp_9: Union[bool, str, int] = False
-    sdwp_10: Union[bool, str, int] = False
-    
-    sdws_1: Union[bool, str, int] = False
-    sdws_2: Union[bool, str, int] = False
-    sdws_3: Union[bool, str, int] = False
-    sdws_4: Union[bool, str, int] = False
-    sdws_5: Union[bool, str, int] = False
-    sdws_6: Union[bool, str, int] = False
-    sdws_7: Union[bool, str, int] = False
-    sdws_8: Union[bool, str, int] = False
-    sdws_9: Union[bool, str, int] = False
-    sdws_10: Union[bool, str, int] = False
-    
-    # SDW Masters
-    sdw_master_p: bool = False
-    sdw_master_s: bool = False
-    sdw_master_stbd_p: bool = False
-    sdw_master_stbd_s: bool = False
-
-    # General Control Switch (Port specific variables)
-    int_led_p: bool = False
-    uw_led_p: bool = False
-    joystick_p: bool = False
-    co2_p: bool = False
-    vhs_pow_p: bool = False
     emg_led_p: bool = False
-
+    int_led_p: bool = False
+    pde_p_24v: bool = False
+    pde_p_24v_main: bool = False
+    pde_p_olr: bool = False
+    main_24_p: bool = False
 
 class SwitchesCategory_S(BaseModel):
-    # Rotary & Displays
+    # Thruster Controls
+    speed_control: bool = False
+    heading_trim: bool = False
+    depth_trim: bool = False
+    lateral_trim: bool = False
+
+    # BATS Control
+    hp_as_on_off: bool = False
+    hp_bs_on_off: bool = False
+    hp_reg_set: bool = False
+    pitch_on_off: bool = False
+    vbt_set_value: bool = False
+    pitch_up_down_analog: bool = False
+    freeboard_s: bool = False
+    dive_in: bool = False
+    water_out_on_off: bool = False
+
+    # General control Switches
+    co2_scrubber_s: bool = False
+    joystick_enable: bool = False
+    pilot_selection: bool = False
+    copilot_selection: bool = False
+    vhs_power_s: bool = False
+    led_emergency_port: bool = False
+    uw_camera_s: bool = False
+    sonar: bool = False
+    surface_ins: bool = False
+    aps_2: bool = False
+    vhf: bool = False
+    uwt: bool = False
     e_batt_s: bool = False
-    ab_s: bool = False
-    eb_s_insulation: float = 0.0
-    eb_s_status: float = 0.0
-    ub_voltage: float = 22.345
+
+    # Service Drop Weight Switches
+    port_side_sdw_1: bool = False
+    port_side_sdw_2: bool = False
+    port_side_sdw_3: bool = False
+    port_side_sdw_4: bool = False
+    port_side_sdw_5: bool = False
+    starboard_side_sdw_1: bool = False
+    starboard_side_sdw_2: bool = False
+    starboard_side_sdw_3: bool = False
+    starboard_side_sdw_4: bool = False
+    starboard_side_sdw_5: bool = False
+
+    # Emergency Jettisoning_S
+    ej_manipulator_1: bool = False
+    ej_manipulator_2: bool = False
+    ej_manipulator_3: bool = False
+    ej_manipulator_4: bool = False
+    ej_trim_system_1: bool = False
+    ej_trim_system_2: bool = False
+    ej_trim_system_3: bool = False
+    ej_trim_system_4: bool = False
+    em_buoy_release_1: bool = False
+    em_buoy_release_2: bool = False
+    em_buoy_release_3: bool = False
+    em_buoy_release_4: bool = False
+    ej_sampling_basket_1: bool = False
+    ej_sampling_basket_2: bool = False
+    ej_sampling_basket_3: bool = False
+    ej_sampling_basket_4: bool = False
+    em_drop_weight_s1_sc: bool = False
+    em_drop_weight_s2_pc: bool = False
+
+    # POWER DIRECT CONTROL_STARBOARD
+    mb_s_1: bool = False
+    mb_s_2: bool = False
+    mb_s_3: bool = False
+    mb_s_4: bool = False
+    mb_s_5: bool = False
+    ab_s_bms: bool = False
+    mb_s_bms: bool = False
+    ab_s_power_selection: bool = False
+    mb_s_pde_s: bool = False
+
+    # New additions
+    ib_insulation: float = 0.0
+    eb_b_status: float = 0.0
+    ub_voltage: float = 0.0
+    power_selection_eb: str = "1"
+    power_selection_ub: str = "1"
     ub_mcb: bool = False
     
-    # Resets
+    # Frontend aliases
+    ab_s: bool = False
+    e_batts: bool = False
+    ub_s_mcb: bool = False
+    ub_s_mcb2: bool = False
+    ub_s: bool = False
+    
+    # Custom layout fields
     pde_s_olr_rst: bool = False
     oim_s_reset: bool = False
-    
-    # Breakers & Power (Middle Section)
-    ab_s_bms: bool = False
-    ab_s_power: bool = False
     pde_s_oim: bool = False
+    ab_s_power: bool = False
     spare_2: bool = False
     ide_2: bool = False
     ide_s_1: bool = False
     wago: bool = False
     xx: bool = False
     oim: bool = False
-    
-    # Lower Status Toggles
     secondary: bool = False
-    mb_s_bms: bool = False
-    mb_s_1: bool = False
-    mb_s_2: bool = False
-    mb_s_3: bool = False
-    mb_s_4: bool = False
-    mb_s_5: bool = False
     pde_s_olr: bool = False
     mb_s_pde_s: bool = False
     main_24_s: bool = False
-    
-    # General Control Switch (Starboard specific variables)
-    uw_led_s: bool = False
-    aps_2: bool = False
     emg_led_s: bool = False
-    co2_s: bool = False
-    vhs_pow_s: bool = False
-    uwt: bool = False
-    vhf: bool = False
-    mbs_ctrl: bool = False
-    dc_fan: bool = False
     int_led_s: bool = False
-
+    mbs_ctrl: bool = False
 
 class SwitchesSW3(BaseModel):
     # Emergency Jettisoning - Trim
-    t_ej_p1: bool = False
-    t_ej_s1: bool = False
-    t_ej_p2: bool = False
-    t_ej_s2: bool = False
-    t_ej_p3: bool = False
-    t_ej_s3: bool = False
-    t_ej_p4: bool = False
-    t_ej_s4: bool = False
+    trim_p1: bool = False
+    trim_p2: bool = False
+    trim_p3: bool = False
+    trim_p4: bool = False
     
+    t_ej_p1: bool = False
+    t_ej_p2: bool = False
+    t_ej_p3: bool = False
+    t_ej_p4: bool = False
+    t_ej_s1: bool = False
+    t_ej_s2: bool = False
+    t_ej_s3: bool = False
+    t_ej_s4: bool = False
+
     # Emergency Jettisoning - Marker Buoy
+    mb_p1: bool = False
+    mb_p2: bool = False
+    mb_p3: bool = False
+    mb_p4: bool = False
+
     mb_ej_p1: bool = False
-    mb_ej_s1: bool = False
     mb_ej_p2: bool = False
-    mb_ej_s2: bool = False
     mb_ej_p3: bool = False
-    mb_ej_s3: bool = False
     mb_ej_p4: bool = False
+    mb_ej_s1: bool = False
+    mb_ej_s2: bool = False
+    mb_ej_s3: bool = False
     mb_ej_s4: bool = False
 
-    # Manipulator
+    # Emergency Jettisoning - Manipulator
+    mani_p1: bool = False
+    mani_p2: bool = False
+    mani_p3: bool = False
+    mani_p4: bool = False
+    
     ejm_p1: bool = False
-    ejm_s1: bool = False
     ejm_p2: bool = False
-    ejm_s2: bool = False
     ejm_p3: bool = False
-    ejm_s3: bool = False
     ejm_p4: bool = False
+    ejm_s1: bool = False
+    ejm_s2: bool = False
+    ejm_s3: bool = False
     ejm_s4: bool = False
 
-    # Sample Basket
-    ejs_p1: bool = False
-    ejs_s1: bool = False
-    ejs_p2: bool = False
-    ejs_s2: bool = False
+    # Emergency Jettisoning - Sample Basket
+    samp_p1: bool = False
+    samp_p2: bool = False
     ejx_p1: bool = False
-    ejx_s1: bool = False
     ejx_p2: bool = False
-    ejx_s2: bool = False
+    
+    ejs_p1: bool = False
+    ejs_p2: bool = False
+    ejs_s1: bool = False
+    ejs_s2: bool = False
 
-    # EDW 
+    # Emergency Drop Weights
     edw_p1: bool = False
-    edw_s1: bool = False
     edw_p2: bool = False
-    edw_s2: bool = False
     edw_p3: bool = False
-    edw_s3: bool = False
     edw_p4: bool = False
+    edw_s1: bool = False
+    edw_s2: bool = False
+    edw_s3: bool = False
     edw_s4: bool = False
 
-    # Water Leak Indicators (Booleans for UI logic)
-    wl_ps: bool = False
-    wl_ide: bool = False
-    wl_pde: bool = False
-    wl_pjb: bool = False
-    wl_tjb: bool = False
-    wl_bat: bool = False
+    # Bottom controls
+    fb_p: bool = False
+    dive_in: bool = False
+    hp_ap: bool = False
+    hp_bp: bool = False
 
-    # Insulation Indicators (Booleans for UI logic)
-    ins_p1: bool = False
-    ins_p2: bool = False
-    ins_p3: bool = False
-    ins_p4: bool = False
-    ins_p5: bool = False
-    ins_p6: bool = False
-    
-    ins_ps_ub: bool = False
-    ins_ide: bool = False
-    ins_pde: bool = False
-    ins_148v: bool = False
-    ins_ps_eb: bool = False
-    ins_spare_1: bool = False
-
-    # Bottom Control Switches
-    freeboard_p: bool = False
-    freeboard_s: bool = False
-    dive_in_on: bool = False
-    dive_in_off: bool = False
-    hp_ap_on: bool = False
-    hp_ap_off: bool = False
-    hp_bp_on: bool = False
-    hp_bp_off: bool = False
-
-    # Knobs (Treated as bools based on value ternary logic (sw.fwd_ctrl ? 2 : 1) )
+    # Rotary controls
     fwd_ctrl: bool = False
     heading_ctrl: bool = False
     depth_ctrl: bool = False
@@ -712,11 +801,43 @@ class SwitchesSW3(BaseModel):
     vbt_ctrl: bool = False
     pitch_ctrl: bool = False
 
+    # Water Leak - Port
+    wl_ps_p: bool = False
+    wl_ide_p: bool = False
+    wl_pde_p: bool = False
+    wl_pjb_p: bool = False
+    wl_tjb_p: bool = False
+    wl_bat_p: bool = False
+
+    # Water Leak - Starboard
+    wl_ps_s: bool = False
+    wl_ide_s: bool = False
+    wl_pde_s: bool = False
+    wl_pjb_s: bool = False
+    wl_tjb_s: bool = False
+    wl_bat_s: bool = False
+
+    # Insulation - Port
+    ins_ps_p: bool = False
+    ins_ide_p: bool = False
+    ins_pde_p: bool = False
+    ins_148_p: bool = False
+    ins_pseb_p: bool = False
+    ins_sp1_p: bool = False
+
+    # Insulation - Starboard
+    ins_ps_s: bool = False
+    ins_ide_s: bool = False
+    ins_pde_s: bool = False
+    ins_148_s: bool = False
+    ins_pseb_s: bool = False
+    ins_sp1_s: bool = False
 
 class SwitchesState(BaseModel):
     p: SwitchesCategory_P = SwitchesCategory_P()
     s: SwitchesCategory_S = SwitchesCategory_S()
     sw3: SwitchesSW3 = SwitchesSW3()
+
 
 # ----------------- ROOT STATE -----------------
 class MatsyaUIState(BaseModel):
@@ -741,5 +862,6 @@ class MatsyaUIState(BaseModel):
     kwh: KwhState = KwhState()
     mcc: MCCState = MCCState()
     switches: SwitchesState = SwitchesState()
+    scenario: ScenarioTelemetry = ScenarioTelemetry()
 
 

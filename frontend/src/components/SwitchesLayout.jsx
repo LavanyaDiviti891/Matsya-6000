@@ -65,12 +65,16 @@ export function SwitchesPLayout({ appState, apiCall }) {
 
       <div style={{ display: "flex", gap: "80px", marginTop: "40px" }}>
         <RotarySwitch
-          label="AB_P"
+          label={"Power Selection\nUB_P"}
+          pos1Label="AB_P"
+          pos2Label="24v PDE_P"
           value={sw.ab_p ? 2 : 1}
           onChange={() => apiCall("/api/toggle/switches.p.ab_p")}
         />
         <RotarySwitch
-          label="E_BATT_P"
+          label={"Power Selection\nEB_P"}
+          pos1Label="E_BATT_P"
+          pos2Label="UB_P"
           value={sw.e_batts ? 2 : 1}
           onChange={() => apiCall("/api/toggle/switches.p.e_batts")}
         />
@@ -112,8 +116,8 @@ export function SwitchesPLayout({ appState, apiCall }) {
           <div style={{ display: "flex", gap: "15px" }}>
             <BlackPushButton
               labelTop="NC"
-              labelBottom="PDE_P_OLR_RESET"
-              onClick={() => apiCall("/api/toggle/switches.p.pde_p_olr_rst")}
+              labelBottom="PDE_S_OLR_RESET"
+              onClick={() => apiCall("/api/toggle/switches.p.pde_p_clr_rst")}
             />
             <BlackPushButton
               labelTop="NO"
@@ -128,8 +132,8 @@ export function SwitchesPLayout({ appState, apiCall }) {
             {tc("AB_P", "", sw.ab_p_power, () =>
               apiCall("/api/toggle/switches.p.ab_p_power"),
             )}
-            {tc("PDE_P_OIM", "", sw.pde_p_oim, () =>
-              apiCall("/api/toggle/switches.p.pde_p_oim"),
+            {tc("PDE_P_OIM", "", sw.pde_p_dim, () =>
+              apiCall("/api/toggle/switches.p.pde_p_dim"),
             )}
           </div>
           <div style={{ display: "flex", gap: "15px" }}>
@@ -161,7 +165,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
                 style={{
                   color: "#ff1493",
                   fontWeight: "bold",
-                  fontSize: "12px",
+                  fontSize: "24px",
                   marginBottom: "5px",
                 }}
               >
@@ -203,7 +207,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
                 style={{
                   color: "#ff1493",
                   fontWeight: "bold",
-                  fontSize: "12px",
+                  fontSize: "24px",
                   marginBottom: "5px",
                 }}
               >
@@ -335,7 +339,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
                   style={{
                     color: "#1a5f9a",
                     fontWeight: "bold",
-                    fontSize: "10px",
+                    fontSize: "22px",
                     marginBottom: "2px",
                   }}
                 >
@@ -379,7 +383,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
                     style={{
                       color: "#ff1493",
                       fontWeight: "bold",
-                      fontSize: "10px",
+                      fontSize: "22px",
                       marginBottom: "2px",
                     }}
                   >
@@ -441,7 +445,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
             style={{
               color: "#ff1493",
               fontWeight: "bold",
-              fontSize: "12px",
+              fontSize: "24px",
               marginTop: "2px",
             }}
           >
@@ -449,27 +453,13 @@ export function SwitchesPLayout({ appState, apiCall }) {
           </div>
           <Toggle3Pos
             value={sw.sdw_master_p ? 1 : sw.sdw_master_s ? -1 : 0}
-            onToggle={() => {
-              const p = sw.sdw_master_p;
-              const s = sw.sdw_master_s;
-              if (!p && !s) {
-                apiCall("/api/toggle/switches.p.sdw_master_p");
-              } else if (p && !s) {
-                apiCall("/api/toggle/switches.p.sdw_master_p");
-                apiCall("/api/toggle/switches.p.sdw_master_s");
-              } else if (!p && s) {
-                apiCall("/api/toggle/switches.p.sdw_master_s");
-              } else {
-                apiCall("/api/toggle/switches.p.sdw_master_p");
-                apiCall("/api/toggle/switches.p.sdw_master_s");
-              }
-            }}
+            onToggle={() => apiCall("/api/toggle/switches.p.sdw_master_p")}
           />
           <div
             style={{
               color: "#ff1493",
               fontWeight: "bold",
-              fontSize: "12px",
+              fontSize: "24px",
               marginTop: "2px",
             }}
           >
@@ -478,7 +468,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
         </div>
         <div
           style={{
-            fontSize: "16px",
+            fontSize: "36px",
             fontWeight: "bold",
             color: "#ff1493",
             fontFamily: "monospace",
@@ -502,7 +492,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
             style={{
               color: "#ff1493",
               fontWeight: "bold",
-              fontSize: "12px",
+              fontSize: "24px",
               marginTop: "2px",
             }}
           >
@@ -510,27 +500,13 @@ export function SwitchesPLayout({ appState, apiCall }) {
           </div>
           <Toggle3Pos
             value={sw.sdw_master_stbd_s ? 1 : sw.sdw_master_stbd_p ? -1 : 0}
-            onToggle={() => {
-              const s = sw.sdw_master_stbd_s;
-              const p = sw.sdw_master_stbd_p;
-              if (!s && !p) {
-                apiCall("/api/toggle/switches.p.sdw_master_stbd_s");
-              } else if (s && !p) {
-                apiCall("/api/toggle/switches.p.sdw_master_stbd_s");
-                apiCall("/api/toggle/switches.p.sdw_master_stbd_p");
-              } else if (!s && p) {
-                apiCall("/api/toggle/switches.p.sdw_master_stbd_p");
-              } else {
-                apiCall("/api/toggle/switches.p.sdw_master_stbd_s");
-                apiCall("/api/toggle/switches.p.sdw_master_stbd_p");
-              }
-            }}
+            onToggle={() => apiCall("/api/toggle/switches.p.sdw_master_stbd")}
           />
           <div
             style={{
               color: "#ff1493",
               fontWeight: "bold",
-              fontSize: "12px",
+              fontSize: "24px",
               marginTop: "2px",
             }}
           >
@@ -548,7 +524,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
           color: "#000",
           padding: "4px 8px",
           fontWeight: "bold",
-          fontSize: "12px",
+          fontSize: "28px",
           border: "2px solid #000",
         }}
       >
@@ -561,7 +537,6 @@ export function SwitchesPLayout({ appState, apiCall }) {
 // --- Starboard Side Layout ---
 export function SwitchesSLayout({ appState, apiCall }) {
   const sw = appState.switches?.s || {};
-  const swP = appState.switches?.p || {}; // Route proper P state variables here
   return (
     <div
       style={{
@@ -579,12 +554,16 @@ export function SwitchesSLayout({ appState, apiCall }) {
 
       <div style={{ display: "flex", gap: "80px", marginTop: "40px" }}>
         <RotarySwitch
-          label="E_BATT_S"
+          label={"Power Selection\nEB_S"}
+          pos1Label="E_BATT_S"
+          pos2Label="UB_S"
           value={sw.e_batt_s ? 2 : 1}
           onChange={() => apiCall("/api/toggle/switches.s.e_batt_s")}
         />
         <RotarySwitch
-          label="AB_S"
+          label={"Power Selection\nUB_S"}
+          pos1Label="AB_S"
+          pos2Label="24v_PDE_S"
           value={sw.ab_s ? 2 : 1}
           onChange={() => apiCall("/api/toggle/switches.s.ab_s")}
         />
@@ -744,7 +723,7 @@ export function SwitchesSLayout({ appState, apiCall }) {
 
       <div
         style={{
-          fontSize: "24px",
+          fontSize: "36px",
           fontWeight: "bold",
           color: "#ff1493",
           fontFamily: "sans-serif",
@@ -768,14 +747,14 @@ export function SwitchesSLayout({ appState, apiCall }) {
             justifyContent: "center",
           }}
         >
-          {tc("INT_LED_P", "", swP.int_led_p, () =>
-            apiCall("/api/toggle/switches.p.int_led_p"),
+          {tc("INT_LED_P", "", sw.int_led_p, () =>
+            apiCall("/api/toggle/switches.s.int_led_p"),
           )}
           {tc("UW_LED_S\nUW_CAM_S", "", sw.uw_led_s, () =>
             apiCall("/api/toggle/switches.s.uw_led_s"),
           )}
-          {tc("UW_LED_P\nUW_CAM_P", "", swP.uw_led_p, () =>
-            apiCall("/api/toggle/switches.p.uw_led_p"),
+          {tc("UW_LED_P\nUW_CAM_P", "", sw.uw_led_p, () =>
+            apiCall("/api/toggle/switches.s.uw_led_p"),
           )}
           {tc("APS-2", "", sw.aps_2, () =>
             apiCall("/api/toggle/switches.s.aps_2"),
@@ -783,8 +762,8 @@ export function SwitchesSLayout({ appState, apiCall }) {
           {tc(
             "Joystick_P\nAPS1_P,GPS_P\nSurface INS_P",
             "",
-            swP.joystick_p,
-            () => apiCall("/api/toggle/switches.p.joystick_p"),
+            sw.joystick_p,
+            () => apiCall("/api/toggle/switches.s.joystick_p"),
           )}
           {tc("EMG_LED_S", "", sw.emg_led_s, () =>
             apiCall("/api/toggle/switches.s.emg_led_s"),
@@ -792,8 +771,8 @@ export function SwitchesSLayout({ appState, apiCall }) {
           {tc("CO2_SCRUB_S\nPWR_S", "PWR_P", sw.co2_s, () =>
             apiCall("/api/toggle/switches.s.co2_s"),
           )}
-          {tc("CO2_SCRUB_P\nPWR_P", "", swP.co2_p, () =>
-            apiCall("/api/toggle/switches.p.co2_p"),
+          {tc("CO2_SCRUB_P\nPWR_P", "", sw.co2_p, () =>
+            apiCall("/api/toggle/switches.s.co2_p"),
           )}
         </div>
         <div
@@ -807,8 +786,8 @@ export function SwitchesSLayout({ appState, apiCall }) {
           {tc("VHS_POW_S", "", sw.vhs_pow_s, () =>
             apiCall("/api/toggle/switches.s.vhs_pow_s"),
           )}
-          {tc("VHS_POW_P", "", swP.vhs_pow_p, () =>
-            apiCall("/api/toggle/switches.p.vhs_pow_p"),
+          {tc("VHS_POW_P", "", sw.vhs_pow_p, () =>
+            apiCall("/api/toggle/switches.s.vhs_pow_p"),
           )}
           {tc("UWT\nPWR_P", "PWR_S", sw.uwt, () =>
             apiCall("/api/toggle/switches.s.uwt"),
@@ -822,8 +801,8 @@ export function SwitchesSLayout({ appState, apiCall }) {
           {tc("DC FAN", "", sw.dc_fan, () =>
             apiCall("/api/toggle/switches.s.dc_fan"),
           )}
-          {tc("EMG_LED_P", "", swP.emg_led_p, () =>
-            apiCall("/api/toggle/switches.p.emg_led_p"),
+          {tc("EMG_LED_P", "", sw.emg_led_p, () =>
+            apiCall("/api/toggle/switches.s.emg_led_p"),
           )}
           {tc("INT_LED_S", "", sw.int_led_s, () =>
             apiCall("/api/toggle/switches.s.int_led_s"),
@@ -839,7 +818,7 @@ export function SwitchesSLayout({ appState, apiCall }) {
           color: "#000",
           padding: "4px 8px",
           fontWeight: "bold",
-          fontSize: "12px",
+          fontSize: "28px",
           border: "2px solid #000",
         }}
       >
@@ -879,13 +858,7 @@ export function Switches3Layout({ appState, apiCall }) {
         }}
       >
         <div
-          className="tape-label-real"
-          style={{
-            position: "absolute",
-            top: "-10px",
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
+          style={{ position: "absolute", top: "-15px", left: "50%", transform: "translateX(-50%)", color: "#ff1493", fontSize: "24px", fontWeight: "bold", background: "#f0f0f0", padding: "0 10px" }}
         >
           EMERGENCY JETTISONING SWITCHES
         </div>
@@ -1182,7 +1155,7 @@ export function Switches3Layout({ appState, apiCall }) {
             <Toggle3Pos
               showLed={true}
               labelTop="EJX-P1"
-              labelBottom="EJX-S1"
+              labelBottom="ELX-S1"
               labelCenter="OFF"
               value={sw.ejx_p1 ? 1 : sw.ejx_s1 ? -1 : 0}
               onToggle={() => {
@@ -1643,7 +1616,7 @@ export function Switches3Layout({ appState, apiCall }) {
           color: "#000",
           padding: "4px 8px",
           fontWeight: "bold",
-          fontSize: "12px",
+          fontSize: "28px",
           border: "2px solid #000",
         }}
       >
