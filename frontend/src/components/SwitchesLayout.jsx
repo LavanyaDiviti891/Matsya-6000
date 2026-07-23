@@ -537,6 +537,7 @@ export function SwitchesPLayout({ appState, apiCall }) {
 // --- Starboard Side Layout ---
 export function SwitchesSLayout({ appState, apiCall }) {
   const sw = appState.switches?.s || {};
+  const swP = appState.switches?.p || {};
   return (
     <div
       style={{
@@ -747,14 +748,14 @@ export function SwitchesSLayout({ appState, apiCall }) {
             justifyContent: "center",
           }}
         >
-          {tc("INT_LED_P", "", sw.int_led_p, () =>
-            apiCall("/api/toggle/switches.s.int_led_p"),
+          {tc("INT_LED_P", "", swP.int_led_p, () =>
+            apiCall("/api/toggle/switches.p.int_led_p"),
           )}
-          {tc("UW_LED_S\nUW_CAM_S", "", sw.uw_led_s, () =>
-            apiCall("/api/toggle/switches.s.uw_led_s"),
+          {tc("UW_LED_S\nUW_CAM_S", "", sw.uw_camera_s, () =>
+            apiCall("/api/toggle/switches.s.uw_camera_s"),
           )}
-          {tc("UW_LED_P\nUW_CAM_P", "", sw.uw_led_p, () =>
-            apiCall("/api/toggle/switches.s.uw_led_p"),
+          {tc("UW_LED_P\nUW_CAM_P", "", swP.uw_camera_p, () =>
+            apiCall("/api/toggle/switches.p.uw_camera_p"),
           )}
           {tc("APS-2", "", sw.aps_2, () =>
             apiCall("/api/toggle/switches.s.aps_2"),
@@ -762,17 +763,17 @@ export function SwitchesSLayout({ appState, apiCall }) {
           {tc(
             "Joystick_P\nAPS1_P,GPS_P\nSurface INS_P",
             "",
-            sw.joystick_p,
-            () => apiCall("/api/toggle/switches.s.joystick_p"),
+            swP.joystick_enable,
+            () => apiCall("/api/toggle/switches.p.joystick_enable"),
           )}
           {tc("EMG_LED_S", "", sw.emg_led_s, () =>
             apiCall("/api/toggle/switches.s.emg_led_s"),
           )}
-          {tc("CO2_SCRUB_S\nPWR_S", "PWR_P", sw.co2_s, () =>
-            apiCall("/api/toggle/switches.s.co2_s"),
+          {tc("CO2_SCRUB_S\nPWR_S", "PWR_P", sw.co2_scrubber_s, () =>
+            apiCall("/api/toggle/switches.s.co2_scrubber_s"),
           )}
-          {tc("CO2_SCRUB_P\nPWR_P", "", sw.co2_p, () =>
-            apiCall("/api/toggle/switches.s.co2_p"),
+          {tc("CO2_SCRUB_P\nPWR_P", "", swP.co2_scrubber_p, () =>
+            apiCall("/api/toggle/switches.p.co2_scrubber_p"),
           )}
         </div>
         <div
@@ -783,11 +784,11 @@ export function SwitchesSLayout({ appState, apiCall }) {
             justifyContent: "center",
           }}
         >
-          {tc("VHS_POW_S", "", sw.vhs_pow_s, () =>
-            apiCall("/api/toggle/switches.s.vhs_pow_s"),
+          {tc("VHS_POW_S", "", sw.vhs_power_s, () =>
+            apiCall("/api/toggle/switches.s.vhs_power_s"),
           )}
-          {tc("VHS_POW_P", "", sw.vhs_pow_p, () =>
-            apiCall("/api/toggle/switches.s.vhs_pow_p"),
+          {tc("VHS_POW_P", "", swP.vhs_power_p, () =>
+            apiCall("/api/toggle/switches.p.vhs_power_p"),
           )}
           {tc("UWT\nPWR_P", "PWR_S", sw.uwt, () =>
             apiCall("/api/toggle/switches.s.uwt"),
@@ -801,8 +802,8 @@ export function SwitchesSLayout({ appState, apiCall }) {
           {tc("DC FAN", "", sw.dc_fan, () =>
             apiCall("/api/toggle/switches.s.dc_fan"),
           )}
-          {tc("EMG_LED_P", "", sw.emg_led_p, () =>
-            apiCall("/api/toggle/switches.s.emg_led_p"),
+          {tc("EMG_LED_P", "", swP.emg_led_p, () =>
+            apiCall("/api/toggle/switches.p.emg_led_p"),
           )}
           {tc("INT_LED_S", "", sw.int_led_s, () =>
             apiCall("/api/toggle/switches.s.int_led_s"),

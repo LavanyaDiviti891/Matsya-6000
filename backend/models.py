@@ -718,6 +718,7 @@ class SwitchesCategory_S(BaseModel):
     emg_led_s: bool = False
     int_led_s: bool = False
     mbs_ctrl: bool = False
+    dc_fan: bool = False
 
 class SwitchesSW3(BaseModel):
     # Emergency Jettisoning - Trim
