@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Tell Tailwind v4 to scan FastHTML python files for classes */
+@source "./*.py";
+@source "./**/*.py";
+
+@theme {
+  /* Override default sans with Inter for that Vercel feel */
+  --font-* : initial;
+  --font-sans: "Inter", "Helvetica Neue", sans-serif;
+  
+  /* Custom colors for Vercel minimalist style */
+  --color-v-border: #eaeaea;
+  --color-v-bg: #fafafa;
+  --color-v-card: #ffffff;
+  --color-v-text: #111111;
+  --color-v-subtext: #666666;
+  --color-v-green: #17c964;
+  --color-v-red: #f31260;
+}
+
+body {
+    background-color: var(--color-v-bg);
+    color: var(--color-v-text);
+    font-family: var(--font-sans);
+}
