@@ -72,10 +72,10 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 writes = {
                     "power.aux_s.voltage.value": round(random.uniform(25.5, 27.0), 2),
                     "power.aux_s.soc.value": round(random.uniform(92.0, 98.0), 1),
-                    "switches.s.eb_s_status": round(random.uniform(25.5, 27.0), 2),
+                    "switches.s.eb_b_status": round(random.uniform(25.5, 27.0), 2),
                 }
             elif name == "eb_s_ir":
-                writes = {"switches.s.eb_s_insulation": round(random.uniform(1.8, 2.5), 2)}
+                writes = {"switches.s.ib_insulation": round(random.uniform(1.8, 2.5), 2)}
             elif name == "ub_s":
                 writes = {
                     "power.ub_stbd.voltage.value": round(random.uniform(24.0, 24.5), 2),

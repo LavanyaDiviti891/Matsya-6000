@@ -45,6 +45,13 @@ async def websocket_endpoint(websocket: WebSocket):
 async def broadcast():
     if not connected_clients:
         return
+        
+    # ENFORCE SOP RULES: Zero out voltage if UB_MCB is not active
+    if not app_state.switches.p.ub_mcb:
+        app_state.switches.p.ub_voltage = 0.0
+    if not app_state.switches.s.ub_mcb:
+        app_state.switches.s.ub_voltage = 0.0
+
     data = app_state.model_dump()
     disconnected = set()
     for client in connected_clients:

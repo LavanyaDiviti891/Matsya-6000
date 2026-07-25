@@ -49,286 +49,117 @@ const tc = (
 export function SwitchesPLayout({ appState, apiCall }) {
   const sw = appState.switches?.p || {};
   return (
-    <div
-      style={{
-        padding: "20px",
-        flex: 1,
-        minHeight: 0,
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <div className="screws" style={{ top: "10px", left: "10px" }}></div>
-      <div className="screws" style={{ top: "10px", right: "10px" }}></div>
-
-      <div style={{ display: "flex", gap: "80px", marginTop: "40px" }}>
-        <RotarySwitch
-          label={"Power Selection\nUB_P"}
-          pos1Label="AB_P"
-          pos2Label="24v PDE_P"
-          value={sw.ab_p ? 2 : 1}
-          onChange={() => apiCall("/api/toggle/switches.p.ab_p")}
-        />
-        <RotarySwitch
-          label={"Power Selection\nEB_P"}
-          pos1Label="E_BATT_P"
-          pos2Label="UB_P"
-          value={sw.e_batts ? 2 : 1}
-          onChange={() => apiCall("/api/toggle/switches.p.e_batts")}
-        />
-      </div>
-
-      <div
+    <div className="switches-page-scale" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+      <div className="switches-page-inner"
         style={{
+          padding: "10px",
           display: "flex",
-          gap: "20px",
-          marginTop: "40px",
-          alignItems: "flex-start",
+          flexDirection: "column",
+          alignItems: "center",
+          position: "relative",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <CircuitBreaker
-            isOn={sw.ub_mcb}
-            onToggle={() => apiCall("/api/toggle/switches.p.ub_mcb")}
+        <div className="screws" style={{ top: "10px", left: "10px" }}></div>
+        <div className="screws" style={{ top: "10px", right: "10px" }}></div>
+
+        <div style={{ display: "flex", gap: "60px", marginTop: "20px" }}>
+          <RotarySwitch
+            label={"Power Selection\nUB_P"}
+            pos1Label="AB_P"
+            pos2Label="24v PDE_P"
+            value={sw.ab_p ? 2 : 1}
+            onChange={() => apiCall("/api/toggle/switches.p.ab_p")}
           />
-          <div className="tape-label-real" style={{ marginTop: "5px" }}>
-            UB_P MCB
-          </div>
-        </div>
-        <DigitalVoltageDisplay
-          label="UB_P VOLTAGE"
-          value={sw.ub_voltage || 22.4}
-        />
-        <MastervoltDisplay label="EB_P STATUS" value={sw.eb_b_status} />
-        <YellowLedDisplay label="EB_P INSULATION" value={sw.ib_insulation} />
-      </div>
-
-      <div style={{ display: "flex", gap: "40px", marginTop: "20px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-          <div style={{ display: "flex", gap: "15px" }}>
-            <BlackPushButton
-              labelTop="NC"
-              labelBottom="PDE_S_OLR_RESET"
-              onClick={() => apiCall("/api/toggle/switches.p.pde_p_olr_rst")}
-            />
-            <BlackPushButton
-              labelTop="NO"
-              labelBottom="OIM_P_RESET"
-              onClick={() => apiCall("/api/toggle/switches.p.oim_p_reset")}
-            />
-          </div>
-          <div style={{ display: "flex", gap: "15px" }}>
-            {tc("AB_P_BMS", "", sw.ab_p_bms, () =>
-              apiCall("/api/toggle/switches.p.ab_p_bms"),
-            )}
-            {tc("AB_P", "", sw.ab_p_power, () =>
-              apiCall("/api/toggle/switches.p.ab_p_power"),
-            )}
-            {tc("PDE_P_OIM", "", sw.pde_p_oim, () =>
-              apiCall("/api/toggle/switches.p.pde_p_oim"),
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "15px" }}>
-            {tc("IDE1_P", "", sw.ide_p_1, () =>
-              apiCall("/api/toggle/switches.p.ide_p_1"),
-            )}
-            {tc("IDE2_P", "", sw.ide_2, () =>
-              apiCall("/api/toggle/switches.p.ide_2"),
-            )}
-            {tc(
-              "SPARE-2\nKEEP IN ON",
-              "",
-              sw.spare_2,
-              () => apiCall("/api/toggle/switches.p.spare_2"),
-              null,
-              "black",
-              true,
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "15px" }}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  color: "#ff1493",
-                  fontWeight: "bold",
-                  fontSize: "24px",
-                  marginBottom: "5px",
-                }}
-              >
-                OIM
-              </div>
-              {tc("", "", sw.oim_p, () =>
-                apiCall("/api/toggle/switches.p.oim_p"),
-              )}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  color: "red",
-                  fontWeight: "bold",
-                  fontSize: "12px",
-                  marginBottom: "5px",
-                }}
-              >
-                Spare
-              </div>
-              {tc("", "", sw.spare_p, () =>
-                apiCall("/api/toggle/switches.p.spare_p"),
-              )}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  color: "#ff1493",
-                  fontWeight: "bold",
-                  fontSize: "24px",
-                  marginBottom: "5px",
-                }}
-              >
-                Wago
-              </div>
-              {tc("", "", sw.wago_p, () =>
-                apiCall("/api/toggle/switches.p.wago_p"),
-              )}
-            </div>
-          </div>
+          <RotarySwitch
+            label={"Power Selection\nEB_P"}
+            pos1Label="E_BATT_P"
+            pos2Label="UB_P"
+            value={sw.e_batts ? 2 : 1}
+            onChange={() => apiCall("/api/toggle/switches.p.e_batts")}
+          />
         </div>
 
-        <div style={{ marginTop: "20px" }}>
-          <LcdScreen />
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-        {tc(
-          "SECONDARY\nPRIMARY\nPDE-P\n24V CONTROL",
-          "",
-          sw.pde_p_24v,
-          () => apiCall("/api/toggle/switches.p.pde_p_24v"),
-        )}
-        {tc("MB_P_BMS", "", sw.mb_p_bms, () =>
-          apiCall("/api/toggle/switches.p.mb_p_bms"),
-        )}
-        {tc("MB_P1_EN", "", sw.mb_p_1, () =>
-          apiCall("/api/toggle/switches.p.mb_p_1"),
-        )}
-        {tc("MB_P2_EN", "", sw.mb_p_2, () =>
-          apiCall("/api/toggle/switches.p.mb_p_2"),
-        )}
-        {tc("MB_P3_EN", "", sw.mb_p_3, () =>
-          apiCall("/api/toggle/switches.p.mb_p_3"),
-        )}
-        {tc("MB_P4_EN", "", sw.mb_p_4, () =>
-          apiCall("/api/toggle/switches.p.mb_p_4"),
-        )}
-        {tc("MB_P5_EN", "", sw.mb_p_5, () =>
-          apiCall("/api/toggle/switches.p.mb_p_5"),
-        )}
-        {tc(
-          "PDE_P_OLR\n\nPDE_P_OLR\nSTATUS",
-          "",
-          sw.pde_p_olr,
-          () => apiCall("/api/toggle/switches.p.pde_p_olr"),
-          null,
-          "black",
-          false,
-          true,
-        )}
-        {tc(
-          "PDE_P_148\n\nPDE_P_148\nIN STATUS",
-          "",
-          sw.mb_p_pde_p,
-          () => apiCall("/api/toggle/switches.p.mb_p_pde_p"),
-          null,
-          "black",
-          false,
-          true,
-        )}
-        {tc(
-          "PDE_P_24V_INT\n\nPDE_P_PL\nSTATUS",
-          "",
-          sw.pde_p_24v_main,
-          () => apiCall("/api/toggle/switches.p.pde_p_24v_main"),
-          null,
-          "black",
-          false,
-          true,
-        )}
-      </div>
-
-      <div
-        style={{
-          width: "100%",
-          height: "1px",
-          background: "#333",
-          margin: "20px 0",
-          boxShadow: "0 1px 1px #000",
-        }}
-      ></div>
-
-      <div
-        style={{
-          fontSize: "16px",
-          fontWeight: "bold",
-          color: "#000",
-          fontFamily: "monospace",
-        }}
-      >
-        SERVICE DROP WEIGHT SWITCHES
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: "40px",
-          marginTop: "10px",
-          justifyContent: "center",
-          width: "100%",
-        }}
-      >
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            gap: "20px",
+            marginTop: "20px",
+            alignItems: "flex-start",
           }}
         >
           <div
             style={{
               display: "flex",
-              gap: "12px",
-              flexWrap: "nowrap",
-              marginTop: "10px",
+              flexDirection: "column",
+              alignItems: "center",
             }}
           >
-            {[1, 2, 3, 4, 5].map((i) => (
+            <CircuitBreaker
+              isOn={sw.ub_mcb}
+              onToggle={() => apiCall("/api/toggle/switches.p.ub_mcb")}
+            />
+            <div className="tape-label-real" style={{ marginTop: "5px" }}>
+              UB_P MCB
+            </div>
+          </div>
+          <DigitalVoltageDisplay
+            label="UB_P VOLTAGE"
+            value={sw.ub_mcb ? (sw.ub_voltage || 24.11) : ""}
+          />
+          <MastervoltDisplay 
+            label="EB_P STATUS" 
+            value={sw.e_batts ? (sw.eb_b_status || 26.41) : ""} 
+          />
+          <YellowLedDisplay 
+            label="EB_P INSULATION" 
+            value={sw.e_batts ? (sw.ib_insulation || 4.00) : ""} 
+          />
+        </div>
+
+        <div style={{ display: "flex", gap: "40px", marginTop: "20px", flexWrap: "wrap", justifyContent: "center", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "20px" }}>
+            <div style={{ display: "flex", gap: "15px" }}>
+              <BlackPushButton
+                labelTop="NC"
+                labelBottom="PDE_S_OLR_RESET"
+                onClick={() => apiCall("/api/toggle/switches.p.pde_p_olr_rst")}
+              />
+              <BlackPushButton
+                labelTop="NO"
+                labelBottom="OIM_P_RESET"
+                onClick={() => apiCall("/api/toggle/switches.p.oim_p_reset")}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              {tc("AB_P_BMS", "", sw.ab_p_bms, () =>
+                apiCall("/api/toggle/switches.p.ab_p_bms"),
+              )}
+              {tc("AB_P", "", sw.ab_p_power, () =>
+                apiCall("/api/toggle/switches.p.ab_p_power"),
+              )}
+              {tc("PDE_P_OIM", "", sw.pde_p_oim, () =>
+                apiCall("/api/toggle/switches.p.pde_p_oim"),
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              {tc("IDE1_P", "", sw.ide_p_1, () =>
+                apiCall("/api/toggle/switches.p.ide_p_1"),
+              )}
+              {tc("IDE2_P", "", sw.ide_2, () =>
+                apiCall("/api/toggle/switches.p.ide_2"),
+              )}
+              {tc(
+                "SPARE-2\nKEEP IN ON",
+                "",
+                sw.spare_2,
+                () => apiCall("/api/toggle/switches.p.spare_2"),
+                null,
+                "black",
+                true,
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
               <div
-                key={`port_side_sdw_${i}`}
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -337,113 +168,140 @@ export function SwitchesPLayout({ appState, apiCall }) {
               >
                 <div
                   style={{
-                    color: "#1a5f9a",
+                    color: "#ff1493",
                     fontWeight: "bold",
-                    fontSize: "22px",
-                    marginBottom: "2px",
+                    fontSize: "24px",
+                    marginBottom: "5px",
                   }}
                 >
-                  {i === 5 ? `SDW5_P_100kg` : `SDW${i}_P_50kg`}
+                  OIM
                 </div>
-                <Toggle3Pos
-                  labelTop={`PC ON`}
-                  labelCenter={`OFF`}
-                  labelBottom={`SC ON`}
-                  value={sw[`port_side_sdw_${i}`] ? 1 : 0}
-                  onToggle={() => {
-                    apiCall(`/api/toggle/switches.p.port_side_sdw_${i}`);
-                  }}
-                />
+                {tc("", "", sw.oim_p, () =>
+                  apiCall("/api/toggle/switches.p.oim_p"),
+                )}
               </div>
-            ))}
-            {[1, 2, 3, 4, 5].map((i) => {
-              return (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
                 <div
-                  key={`starboard_side_sdw_${i}`}
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
+                    color: "red",
+                    fontWeight: "bold",
+                    fontSize: "12px",
+                    marginBottom: "5px",
                   }}
                 >
-                  <div
-                    style={{
-                      color: "#ff1493",
-                      fontWeight: "bold",
-                      fontSize: "22px",
-                      marginBottom: "2px",
-                    }}
-                  >
-                    {i === 5 ? `SDW5_S_100kg` : `SDW${i}_S_50kg`}
-                  </div>
-                  <Toggle3Pos
-                    labelTop={`PC ON`}
-                    labelCenter={`OFF`}
-                    labelBottom={`SC ON`}
-                    value={sw[`starboard_side_sdw_${i}`] ? 1 : 0}
-                    onToggle={() => {
-                      apiCall(`/api/toggle/switches.p.starboard_side_sdw_${i}`);
-                    }}
-                  />
+                  Spare
                 </div>
-              );
-            })}
+                {tc("", "", sw.spare_p, () =>
+                  apiCall("/api/toggle/switches.p.spare_p"),
+                )}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#ff1493",
+                    fontWeight: "bold",
+                    fontSize: "24px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  Wago
+                </div>
+                {tc("", "", sw.wago_p, () =>
+                  apiCall("/api/toggle/switches.p.wago_p"),
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "30px",
-          marginTop: "20px",
-          width: "100%",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <div
-            style={{ color: "#00cc66", fontWeight: "bold", fontSize: "10px" }}
-          >
-            SDW MASTER SWITCH_PORT
-          </div>
-          <div
-            style={{
-              color: "#ff1493",
-              fontWeight: "bold",
-              fontSize: "24px",
-              marginTop: "2px",
-            }}
-          >
-            PWR_P
-          </div>
-          <Toggle3Pos
-            value={sw.sdw_master_p ? 1 : sw.sdw_master_s ? -1 : 0}
-            onToggle={() => apiCall("/api/toggle/switches.p.sdw_master_p")}
-          />
-          <div
-            style={{
-              color: "#ff1493",
-              fontWeight: "bold",
-              fontSize: "24px",
-              marginTop: "2px",
-            }}
-          >
-            PWR_S
+          <div style={{ marginTop: "48px" }}>
+            <LcdScreen />
           </div>
         </div>
+
+        <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+          {tc(
+            "SECONDARY\nPRIMARY\nPDE-P\n24V CONTROL",
+            "",
+            sw.pde_p_24v,
+            () => apiCall("/api/toggle/switches.p.pde_p_24v"),
+          )}
+          {tc("MB_P_BMS", "", sw.mb_p_bms, () =>
+            apiCall("/api/toggle/switches.p.mb_p_bms"),
+          )}
+          {tc("MB_P1_EN", "", sw.mb_p_1, () =>
+            apiCall("/api/toggle/switches.p.mb_p_1"),
+          )}
+          {tc("MB_P2_EN", "", sw.mb_p_2, () =>
+            apiCall("/api/toggle/switches.p.mb_p_2"),
+          )}
+          {tc("MB_P3_EN", "", sw.mb_p_3, () =>
+            apiCall("/api/toggle/switches.p.mb_p_3"),
+          )}
+          {tc("MB_P4_EN", "", sw.mb_p_4, () =>
+            apiCall("/api/toggle/switches.p.mb_p_4"),
+          )}
+          {tc("MB_P5_EN", "", sw.mb_p_5, () =>
+            apiCall("/api/toggle/switches.p.mb_p_5"),
+          )}
+          {tc(
+            "PDE_P_OLR\n\nPDE_P_OLR\nSTATUS",
+            "",
+            sw.pde_p_olr,
+            () => apiCall("/api/toggle/switches.p.pde_p_olr"),
+            null,
+            "black",
+            false,
+            true,
+          )}
+          {tc(
+            "PDE_P_148\n\nPDE_P_148\nIN STATUS",
+            "",
+            sw.mb_p_pde_p,
+            () => apiCall("/api/toggle/switches.p.mb_p_pde_p"),
+            null,
+            "black",
+            false,
+            true,
+          )}
+          {tc(
+            "PDE_P_24V_INT\n\nPDE_P_PL\nSTATUS",
+            "",
+            sw.pde_p_24v_main,
+            () => apiCall("/api/toggle/switches.p.pde_p_24v_main"),
+            null,
+            "black",
+            false,
+            true,
+          )}
+        </div>
+
         <div
           style={{
-            fontSize: "36px",
+            width: "100%",
+            height: "1px",
+            background: "#333",
+            margin: "12px 0",
+            boxShadow: "0 1px 1px #000",
+          }}
+        ></div>
+
+        <div
+          style={{
+            fontSize: "16px",
             fontWeight: "bold",
-            color: "#ff1493",
+            color: "#000",
             fontFamily: "monospace",
           }}
         >
@@ -452,56 +310,204 @@ export function SwitchesPLayout({ appState, apiCall }) {
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            gap: "30px",
+            marginTop: "8px",
+            justifyContent: "center",
+            width: "100%",
           }}
         >
           <div
-            style={{ color: "#00cc66", fontWeight: "bold", fontSize: "10px" }}
-          >
-            SDW MASTER SWITCH_STBD
-          </div>
-          <div
             style={{
-              color: "#ff1493",
-              fontWeight: "bold",
-              fontSize: "24px",
-              marginTop: "2px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
             }}
           >
-            PWR_S
-          </div>
-          <Toggle3Pos
-            value={sw.sdw_master_stbd_s ? 1 : sw.sdw_master_stbd_p ? -1 : 0}
-            onToggle={() => apiCall("/api/toggle/switches.p.sdw_master_stbd_p")}
-          />
-          <div
-            style={{
-              color: "#ff1493",
-              fontWeight: "bold",
-              fontSize: "24px",
-              marginTop: "2px",
-            }}
-          >
-            PWR_P
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                flexWrap: "nowrap",
+                marginTop: "10px",
+              }}
+            >
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={`port_side_sdw_${i}`}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#1a5f9a",
+                      fontWeight: "bold",
+                      fontSize: "22px",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    {i === 5 ? `SDW5_P_100kg` : `SDW${i}_P_50kg`}
+                  </div>
+                  <Toggle3Pos
+                    labelTop={`PC ON`}
+                    labelCenter={`OFF`}
+                    labelBottom={`SC ON`}
+                    value={sw[`port_side_sdw_${i}`] ? 1 : 0}
+                    onToggle={() => {
+                      apiCall(`/api/toggle/switches.p.port_side_sdw_${i}`);
+                    }}
+                  />
+                </div>
+              ))}
+              {[1, 2, 3, 4, 5].map((i) => {
+                return (
+                  <div
+                    key={`starboard_side_sdw_${i}`}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#ff1493",
+                        fontWeight: "bold",
+                        fontSize: "22px",
+                        marginBottom: "2px",
+                      }}
+                    >
+                      {i === 5 ? `SDW5_S_100kg` : `SDW${i}_S_50kg`}
+                    </div>
+                    <Toggle3Pos
+                      labelTop={`PC ON`}
+                      labelCenter={`OFF`}
+                      labelBottom={`SC ON`}
+                      value={sw[`starboard_side_sdw_${i}`] ? 1 : 0}
+                      onToggle={() => {
+                        apiCall(`/api/toggle/switches.p.starboard_side_sdw_${i}`);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          left: "20px",
-          background: "#ff00ff",
-          color: "#000",
-          padding: "4px 8px",
-          fontWeight: "bold",
-          fontSize: "28px",
-          border: "2px solid #000",
-        }}
-      >
-        NAVIGATION PC
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "30px",
+            marginTop: "20px",
+            width: "100%",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{ color: "#00cc66", fontWeight: "bold", fontSize: "10px" }}
+            >
+              SDW MASTER SWITCH_PORT
+            </div>
+            <div
+              style={{
+                color: "#ff1493",
+                fontWeight: "bold",
+                fontSize: "24px",
+                marginTop: "2px",
+              }}
+            >
+              PWR_P
+            </div>
+            <Toggle3Pos
+              value={sw.sdw_master_p ? 1 : sw.sdw_master_s ? -1 : 0}
+              onToggle={() => apiCall("/api/toggle/switches.p.sdw_master_p")}
+            />
+            <div
+              style={{
+                color: "#ff1493",
+                fontWeight: "bold",
+                fontSize: "24px",
+                marginTop: "2px",
+              }}
+            >
+              PWR_S
+            </div>
+          </div>
+          <div
+            style={{
+              fontSize: "36px",
+              fontWeight: "bold",
+              color: "#ff1493",
+              fontFamily: "monospace",
+            }}
+          >
+            SERVICE DROP WEIGHT SWITCHES
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{ color: "#00cc66", fontWeight: "bold", fontSize: "10px" }}
+            >
+              SDW MASTER SWITCH_STBD
+            </div>
+            <div
+              style={{
+                color: "#ff1493",
+                fontWeight: "bold",
+                fontSize: "24px",
+                marginTop: "2px",
+              }}
+            >
+              PWR_S
+            </div>
+            <Toggle3Pos
+              value={sw.sdw_master_stbd_s ? 1 : sw.sdw_master_stbd_p ? -1 : 0}
+              onToggle={() => apiCall("/api/toggle/switches.p.sdw_master_stbd_p")}
+            />
+            <div
+              style={{
+                color: "#ff1493",
+                fontWeight: "bold",
+                fontSize: "24px",
+                marginTop: "2px",
+              }}
+            >
+              PWR_P
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            bottom: "20px",
+            left: "20px",
+            background: "#ff00ff",
+            color: "#000",
+            padding: "4px 8px",
+            fontWeight: "bold",
+            fontSize: "28px",
+            border: "2px solid #000",
+          }}
+        >
+          NAVIGATION PC
+        </div>
       </div>
     </div>
   );
@@ -512,291 +518,297 @@ export function SwitchesSLayout({ appState, apiCall }) {
   const sw = appState.switches?.s || {};
   const swP = appState.switches?.p || {};
   return (
-    <div
-      style={{
-        padding: "20px",
-        flex: 1,
-        minHeight: 0,
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <div className="screws" style={{ top: "10px", left: "10px" }}></div>
-      <div className="screws" style={{ top: "10px", right: "10px" }}></div>
-
-      <div style={{ display: "flex", gap: "80px", marginTop: "40px" }}>
-        <RotarySwitch
-          label={"Power Selection\nEB_S"}
-          pos1Label="E_BATT_S"
-          pos2Label="UB_S"
-          value={sw.e_batt_s ? 2 : 1}
-          onChange={() => apiCall("/api/toggle/switches.s.e_batt_s")}
-        />
-        <RotarySwitch
-          label={"Power Selection\nUB_S"}
-          pos1Label="AB_S"
-          pos2Label="24v_PDE_S"
-          value={sw.ab_s ? 2 : 1}
-          onChange={() => apiCall("/api/toggle/switches.s.ab_s")}
-        />
-      </div>
-
-      <div
+    <div className="switches-page-scale" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+      <div className="switches-page-inner"
         style={{
+          padding: "10px",
           display: "flex",
-          gap: "20px",
-          marginTop: "40px",
-          alignItems: "flex-start",
+          flexDirection: "column",
+          alignItems: "center",
+          position: "relative",
         }}
       >
-        <YellowLedDisplay label="EB_S INSULATION" value={sw.eb_s_insulation} />
-        <MastervoltDisplay label="EB_S STATUS" value={sw.eb_s_status} />
-        <DigitalVoltageDisplay
-          label="UB_S_VOLTAGE"
-          value={sw.ub_voltage || 22.345}
-        />
+        <div className="screws" style={{ top: "10px", left: "10px" }}></div>
+        <div className="screws" style={{ top: "10px", right: "10px" }}></div>
+
+        <div style={{ display: "flex", gap: "60px", marginTop: "20px" }}>
+          <RotarySwitch
+            label={"Power Selection\nEB_S"}
+            pos1Label="E_BATT_S"
+            pos2Label="UB_S"
+            value={sw.e_batt_s ? 2 : 1}
+            onChange={() => apiCall("/api/toggle/switches.s.e_batt_s")}
+          />
+          <RotarySwitch
+            label={"Power Selection\nUB_S"}
+            pos1Label="AB_S"
+            pos2Label="24v_PDE_S"
+            value={sw.ab_s ? 2 : 1}
+            onChange={() => apiCall("/api/toggle/switches.s.ab_s")}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "20px",
+            marginTop: "20px",
+            alignItems: "flex-start",
+          }}
+        >
+          <YellowLedDisplay 
+            label="EB_S INSULATION" 
+            value={sw.e_batt_s ? (sw.eb_s_insulation || 4.00) : ""} 
+          />
+          <MastervoltDisplay 
+            label="EB_S STATUS" 
+            value={sw.e_batt_s ? (sw.eb_s_status || 26.41) : ""} 
+          />
+          <DigitalVoltageDisplay
+            label="UB_S_VOLTAGE"
+            value={sw.ub_mcb ? (sw.ub_voltage || 24.48) : ""}
+          />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <CircuitBreaker
+              isOn={sw.ub_mcb}
+              onToggle={() => apiCall("/api/toggle/switches.s.ub_mcb")}
+            />
+            <div className="tape-label-real" style={{ marginTop: "5px" }}>
+              UB_S MCB
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "40px", marginTop: "20px", flexWrap: "wrap", justifyContent: "center", alignItems: "flex-start" }}>
+          <div style={{ marginTop: "48px", marginBottom: "20px" }}>
+            <LcdScreen />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "20px" }}>
+            <div style={{ display: "flex", gap: "15px" }}>
+              <BlackPushButton
+                labelTop=""
+                labelBottom="PDE_S_OLR_RESET"
+                onClick={() => apiCall("/api/toggle/switches.s.pde_s_olr_rst")}
+              />
+              <BlackPushButton
+                labelTop=""
+                labelBottom="OIM_S_RESET"
+                onClick={() => apiCall("/api/toggle/switches.s.oim_s_reset")}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              {tc("AB_S_BMS", "", sw.ab_s_bms, () =>
+                apiCall("/api/toggle/switches.s.ab_s_bms"),
+              )}
+              {tc("AB_S", "", sw.ab_s_power, () =>
+                apiCall("/api/toggle/switches.s.ab_s_power"),
+              )}
+              {tc("PDE_S_OIM", "", sw.pde_s_oim, () =>
+                apiCall("/api/toggle/switches.s.pde_s_oim"),
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              {tc(
+                "SPARE-2\nKEEP IN ON",
+                "",
+                sw.spare_2,
+                () => apiCall("/api/toggle/switches.s.spare_2"),
+                null,
+                "black",
+                true,
+              )}
+              {tc("IDE2", "", sw.ide_2, () =>
+                apiCall("/api/toggle/switches.s.ide_2"),
+              )}
+              {tc("IDE1_S", "", sw.ide_s_1, () =>
+                apiCall("/api/toggle/switches.s.ide_s_1"),
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              {tc("Wago", "", sw.wago, () => apiCall("/api/toggle/switches.s.wago"))}
+              {tc("XX", "", sw.xx, () => apiCall("/api/toggle/switches.s.xx"))}
+              {tc("OIM", "", sw.oim, () => apiCall("/api/toggle/switches.s.oim"))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", marginTop: "40px", justifyContent: "space-between" }}>
+          {tc(
+            "SECONDARY\nPWR_S",
+            "PRIMARY PDE-S\n24V CONTROL",
+            sw.secondary,
+            () => apiCall("/api/toggle/switches.s.secondary"),
+          )}
+          {tc("MB_S_BMS", "", sw.mb_s_bms, () =>
+            apiCall("/api/toggle/switches.s.mb_s_bms"),
+          )}
+          {tc("MB_S_1", "", sw.mb_s_1, () =>
+            apiCall("/api/toggle/switches.s.mb_s_1"),
+          )}
+          {tc("MB_S_2", "", sw.mb_s_2, () =>
+            apiCall("/api/toggle/switches.s.mb_s_2"),
+          )}
+          {tc("MB_S_3", "", sw.mb_s_3, () =>
+            apiCall("/api/toggle/switches.s.mb_s_3"),
+          )}
+          {tc("MB_S_4", "", sw.mb_s_4, () =>
+            apiCall("/api/toggle/switches.s.mb_s_4"),
+          )}
+          {tc("MB_S_5", "", sw.mb_s_5, () =>
+            apiCall("/api/toggle/switches.s.mb_s_5"),
+          )}
+          {tc(
+            "PDE-S-OLR",
+            "PDE-S OLR\nSTATUS",
+            sw.pde_s_olr,
+            () => apiCall("/api/toggle/switches.s.pde_s_olr"),
+            null,
+            "black",
+            false,
+            true,
+          )}
+          {tc(
+            "MB_S-PDE_S",
+            "PDE-S 148V\nIN STATUS",
+            sw.mb_s_pde_s,
+            () => apiCall("/api/toggle/switches.s.mb_s_pde_s"),
+            null,
+            "black",
+            false,
+            true,
+          )}
+          {tc(
+            "24_MAIN_S",
+            "PDE-S PL\nSTATUS",
+            sw.main_24_s,
+            () => apiCall("/api/toggle/switches.s.main_24_s"),
+            null,
+            "black",
+            false,
+            true,
+          )}
+        </div>
+
+        <div
+          style={{
+            width: "100%",
+            height: "1px",
+            background: "#333",
+            margin: "20px 0",
+            boxShadow: "0 1px 1px #000",
+          }}
+        ></div>
+
+        <div
+          style={{
+            fontSize: "36px",
+            fontWeight: "bold",
+            color: "#ff1493",
+            fontFamily: "sans-serif",
+          }}
+        >
+          General Control Switch
+        </div>
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
+            gap: "20px",
+            marginTop: "10px",
           }}
         >
-          <CircuitBreaker
-            isOn={sw.ub_mcb}
-            onToggle={() => apiCall("/api/toggle/switches.s.ub_mcb")}
-          />
-          <div className="tape-label-real" style={{ marginTop: "5px" }}>
-            UB_S MCB
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: "40px", marginTop: "20px" }}>
-        <div style={{ marginTop: "20px" }}>
-          <LcdScreen />
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-          <div style={{ display: "flex", gap: "15px" }}>
-            <BlackPushButton
-              labelTop=""
-              labelBottom="PDE_S_OLR_RESET"
-              onClick={() => apiCall("/api/toggle/switches.s.pde_s_olr_rst")}
-            />
-            <BlackPushButton
-              labelTop=""
-              labelBottom="OIM_S_RESET"
-              onClick={() => apiCall("/api/toggle/switches.s.oim_s_reset")}
-            />
-          </div>
-          <div style={{ display: "flex", gap: "15px" }}>
-            {tc("AB_S_BMS", "", sw.ab_s_bms, () =>
-              apiCall("/api/toggle/switches.s.ab_s_bms"),
+          <div
+            style={{
+              display: "flex",
+              gap: "15px",
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            {tc("INT_LED_P", "", swP.int_led_p, () =>
+              apiCall("/api/toggle/switches.p.int_led_p"),
             )}
-            {tc("AB_S", "", sw.ab_s_power, () =>
-              apiCall("/api/toggle/switches.s.ab_s_power"),
+            {tc("UW_LED_S\nUW_CAM_S", "", sw.uw_camera_s, () =>
+              apiCall("/api/toggle/switches.s.uw_camera_s"),
             )}
-            {tc("PDE_S_OIM", "", sw.pde_s_oim, () =>
-              apiCall("/api/toggle/switches.s.pde_s_oim"),
+            {tc("UW_LED_P\nUW_CAM_P", "", swP.uw_camera_p, () =>
+              apiCall("/api/toggle/switches.p.uw_camera_p"),
             )}
-          </div>
-          <div style={{ display: "flex", gap: "15px" }}>
+            {tc("APS-2", "", sw.aps_2, () =>
+              apiCall("/api/toggle/switches.s.aps_2"),
+            )}
             {tc(
-              "SPARE-2\nKEEP IN ON",
+              "Joystick_P\nAPS1_P,GPS_P\nSurface INS_P",
               "",
-              sw.spare_2,
-              () => apiCall("/api/toggle/switches.s.spare_2"),
-              null,
-              "black",
-              true,
+              swP.joystick_enable,
+              () => apiCall("/api/toggle/switches.p.joystick_enable"),
             )}
-            {tc("IDE2", "", sw.ide_2, () =>
-              apiCall("/api/toggle/switches.s.ide_2"),
+            {tc("EMG_LED_S", "", sw.emg_led_s, () =>
+              apiCall("/api/toggle/switches.s.emg_led_s"),
             )}
-            {tc("IDE1_S", "", sw.ide_s_1, () =>
-              apiCall("/api/toggle/switches.s.ide_s_1"),
+            {tc("CO2_SCRUB_S\nPWR_S", "PWR_P", sw.co2_scrubber_s, () =>
+              apiCall("/api/toggle/switches.s.co2_scrubber_s"),
+            )}
+            {tc("CO2_SCRUB_P\nPWR_P", "", swP.co2_scrubber_p, () =>
+              apiCall("/api/toggle/switches.p.co2_scrubber_p"),
             )}
           </div>
-          <div style={{ display: "flex", gap: "15px" }}>
-            {tc("Wago", "", sw.wago, () => apiCall("/api/toggle/switches.s.wago"))}
-            {tc("XX", "", sw.xx, () => apiCall("/api/toggle/switches.s.xx"))}
-            {tc("OIM", "", sw.oim, () => apiCall("/api/toggle/switches.s.oim"))}
+          <div
+            style={{
+              display: "flex",
+              gap: "15px",
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            {tc("VHS_POW_S", "", sw.vhs_power_s, () =>
+              apiCall("/api/toggle/switches.s.vhs_power_s"),
+            )}
+            {tc("VHS_POW_P", "", swP.vhs_power_p, () =>
+              apiCall("/api/toggle/switches.p.vhs_power_p"),
+            )}
+            {tc("UWT\nPWR_P", "PWR_S", sw.uwt, () =>
+              apiCall("/api/toggle/switches.s.uwt"),
+            )}
+            {tc("VHF\nPWR_S", "PWR_P", sw.vhf, () =>
+              apiCall("/api/toggle/switches.s.vhf"),
+            )}
+            {tc("MBS_CTRL\nPWR_S", "PWR_P", sw.mbs_ctrl, () =>
+              apiCall("/api/toggle/switches.s.mbs_ctrl"),
+            )}
+            {tc("DC FAN", "", sw.dc_fan, () =>
+              apiCall("/api/toggle/switches.s.dc_fan"),
+            )}
+            {tc("EMG_LED_P", "", swP.emg_led_p, () =>
+              apiCall("/api/toggle/switches.p.emg_led_p"),
+            )}
+            {tc("INT_LED_S", "", sw.int_led_s, () =>
+              apiCall("/api/toggle/switches.s.int_led_s"),
+            )}
           </div>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: "10px", marginTop: "40px", justifyContent: "space-between" }}>
-        {tc(
-          "SECONDARY\nPWR_S",
-          "PRIMARY PDE-S\n24V CONTROL",
-          sw.secondary,
-          () => apiCall("/api/toggle/switches.s.secondary"),
-        )}
-        {tc("MB_S_BMS", "", sw.mb_s_bms, () =>
-          apiCall("/api/toggle/switches.s.mb_s_bms"),
-        )}
-        {tc("MB_S_1", "", sw.mb_s_1, () =>
-          apiCall("/api/toggle/switches.s.mb_s_1"),
-        )}
-        {tc("MB_S_2", "", sw.mb_s_2, () =>
-          apiCall("/api/toggle/switches.s.mb_s_2"),
-        )}
-        {tc("MB_S_3", "", sw.mb_s_3, () =>
-          apiCall("/api/toggle/switches.s.mb_s_3"),
-        )}
-        {tc("MB_S_4", "", sw.mb_s_4, () =>
-          apiCall("/api/toggle/switches.s.mb_s_4"),
-        )}
-        {tc("MB_S_5", "", sw.mb_s_5, () =>
-          apiCall("/api/toggle/switches.s.mb_s_5"),
-        )}
-        {tc(
-          "PDE-S-OLR",
-          "PDE-S OLR\nSTATUS",
-          sw.pde_s_olr,
-          () => apiCall("/api/toggle/switches.s.pde_s_olr"),
-          null,
-          "black",
-          false,
-          true,
-        )}
-        {tc(
-          "MB_S-PDE_S",
-          "PDE-S 148V\nIN STATUS",
-          sw.mb_s_pde_s,
-          () => apiCall("/api/toggle/switches.s.mb_s_pde_s"),
-          null,
-          "black",
-          false,
-          true,
-        )}
-        {tc(
-          "24_MAIN_S",
-          "PDE-S PL\nSTATUS",
-          sw.main_24_s,
-          () => apiCall("/api/toggle/switches.s.main_24_s"),
-          null,
-          "black",
-          false,
-          true,
-        )}
-      </div>
-
-      <div
-        style={{
-          width: "100%",
-          height: "1px",
-          background: "#333",
-          margin: "20px 0",
-          boxShadow: "0 1px 1px #000",
-        }}
-      ></div>
-
-      <div
-        style={{
-          fontSize: "36px",
-          fontWeight: "bold",
-          color: "#ff1493",
-          fontFamily: "sans-serif",
-        }}
-      >
-        General Control Switch
-      </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-          marginTop: "10px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: "15px",
-            flexWrap: "wrap",
-            justifyContent: "center",
-          }}
-        >
-          {tc("INT_LED_P", "", swP.int_led_p, () =>
-            apiCall("/api/toggle/switches.p.int_led_p"),
-          )}
-          {tc("UW_LED_S\nUW_CAM_S", "", sw.uw_camera_s, () =>
-            apiCall("/api/toggle/switches.s.uw_camera_s"),
-          )}
-          {tc("UW_LED_P\nUW_CAM_P", "", swP.uw_camera_p, () =>
-            apiCall("/api/toggle/switches.p.uw_camera_p"),
-          )}
-          {tc("APS-2", "", sw.aps_2, () =>
-            apiCall("/api/toggle/switches.s.aps_2"),
-          )}
-          {tc(
-            "Joystick_P\nAPS1_P,GPS_P\nSurface INS_P",
-            "",
-            swP.joystick_enable,
-            () => apiCall("/api/toggle/switches.p.joystick_enable"),
-          )}
-          {tc("EMG_LED_S", "", sw.emg_led_s, () =>
-            apiCall("/api/toggle/switches.s.emg_led_s"),
-          )}
-          {tc("CO2_SCRUB_S\nPWR_S", "PWR_P", sw.co2_scrubber_s, () =>
-            apiCall("/api/toggle/switches.s.co2_scrubber_s"),
-          )}
-          {tc("CO2_SCRUB_P\nPWR_P", "", swP.co2_scrubber_p, () =>
-            apiCall("/api/toggle/switches.p.co2_scrubber_p"),
-          )}
         </div>
         <div
           style={{
-            display: "flex",
-            gap: "15px",
-            flexWrap: "wrap",
-            justifyContent: "center",
+            position: "absolute",
+            bottom: "20px",
+            right: "20px",
+            background: "#ff00ff",
+            color: "#000",
+            padding: "4px 8px",
+            fontWeight: "bold",
+            fontSize: "28px",
+            border: "2px solid #000",
           }}
         >
-          {tc("VHS_POW_S", "", sw.vhs_power_s, () =>
-            apiCall("/api/toggle/switches.s.vhs_power_s"),
-          )}
-          {tc("VHS_POW_P", "", swP.vhs_power_p, () =>
-            apiCall("/api/toggle/switches.p.vhs_power_p"),
-          )}
-          {tc("UWT\nPWR_P", "PWR_S", sw.uwt, () =>
-            apiCall("/api/toggle/switches.s.uwt"),
-          )}
-          {tc("VHF\nPWR_S", "PWR_P", sw.vhf, () =>
-            apiCall("/api/toggle/switches.s.vhf"),
-          )}
-          {tc("MBS_CTRL\nPWR_S", "PWR_P", sw.mbs_ctrl, () =>
-            apiCall("/api/toggle/switches.s.mbs_ctrl"),
-          )}
-          {tc("DC FAN", "", sw.dc_fan, () =>
-            apiCall("/api/toggle/switches.s.dc_fan"),
-          )}
-          {tc("EMG_LED_P", "", swP.emg_led_p, () =>
-            apiCall("/api/toggle/switches.p.emg_led_p"),
-          )}
-          {tc("INT_LED_S", "", sw.int_led_s, () =>
-            apiCall("/api/toggle/switches.s.int_led_s"),
-          )}
+          IMAGING PC
         </div>
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          right: "20px",
-          background: "#ff00ff",
-          color: "#000",
-          padding: "4px 8px",
-          fontWeight: "bold",
-          fontSize: "28px",
-          border: "2px solid #000",
-        }}
-      >
-        IMAGING PC
       </div>
     </div>
   );
@@ -808,7 +820,7 @@ export function Switches3Layout({ appState, apiCall }) {
   return (
     <div
       style={{
-        padding: "20px",
+        padding: "10px",
         flex: 1,
         minHeight: 0,
         overflowY: "auto",
@@ -856,7 +868,7 @@ export function Switches3Layout({ appState, apiCall }) {
             <div className="tape-label-real" style={{ marginBottom: "5px" }}>
               TRIM-EMG JET-STBD
             </div>
-            <div style={{ display: "flex", gap: "15px" }}>
+            <div style={{ display: "flex", gap: "10px" }}>
               <Toggle3Pos
                 showLed={true}
                 labelTop="T-EJ-P1"
@@ -1482,93 +1494,93 @@ export function Switches3Layout({ appState, apiCall }) {
         }}
       >
         <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <BlackPushButton labelTop="SUBMERSIBLE\nCTRL" />
-          <BlackPushButton labelTop="WATER OUT" />
-          <BlackPushButton labelTop="TRIM" />
-        </div>
-        <div style={{ display: "flex", gap: "4px" }}>
-          {tc(
-            "FREEBOARD_P",
-            "",
-            sw.freeboard_p,
-            () => apiCall("/api/toggle/switches.sw3.freeboard_p"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-          {tc(
-            "FREEBOARD_S",
-            "",
-            sw.freeboard_s,
-            () => apiCall("/api/toggle/switches.sw3.freeboard_s"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-          {tc(
-            "DIVE-IN-ON",
-            "",
-            sw.dive_in_on,
-            () => apiCall("/api/toggle/switches.sw3.dive_in_on"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-          {tc(
-            "DIVE-IN-OFF",
-            "",
-            sw.dive_in_off,
-            () => apiCall("/api/toggle/switches.sw3.dive_in_off"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-          {tc(
-            "HP-AP-ON",
-            "",
-            sw.hp_ap_on,
-            () => apiCall("/api/toggle/switches.sw3.hp_ap_on"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-          {tc(
-            "HP-AP-OFF",
-            "",
-            sw.hp_ap_off,
-            () => apiCall("/api/toggle/switches.sw3.hp_ap_off"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-          {tc(
-            "HP-BP-ON",
-            "",
-            sw.hp_bp_on,
-            () => apiCall("/api/toggle/switches.sw3.hp_bp_on"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-          {tc(
-            "HP-BP-OFF",
-            "",
-            sw.hp_bp_off,
-            () => apiCall("/api/toggle/switches.sw3.hp_bp_off"),
-            null,
-            "black",
-            false,
-            true,
-          )}
-        </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <BlackPushButton labelTop="SUBMERSIBLE\nCTRL" />
+            <BlackPushButton labelTop="WATER OUT" />
+            <BlackPushButton labelTop="TRIM" />
+          </div>
+          <div style={{ display: "flex", gap: "4px" }}>
+            {tc(
+              "FREEBOARD_P",
+              "",
+              sw.freeboard_p,
+              () => apiCall("/api/toggle/switches.sw3.freeboard_p"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+            {tc(
+              "FREEBOARD_S",
+              "",
+              sw.freeboard_s,
+              () => apiCall("/api/toggle/switches.sw3.freeboard_s"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+            {tc(
+              "DIVE-IN-ON",
+              "",
+              sw.dive_in_on,
+              () => apiCall("/api/toggle/switches.sw3.dive_in_on"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+            {tc(
+              "DIVE-IN-OFF",
+              "",
+              sw.dive_in_off,
+              () => apiCall("/api/toggle/switches.sw3.dive_in_off"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+            {tc(
+              "HP-AP-ON",
+              "",
+              sw.hp_ap_on,
+              () => apiCall("/api/toggle/switches.sw3.hp_ap_on"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+            {tc(
+              "HP-AP-OFF",
+              "",
+              sw.hp_ap_off,
+              () => apiCall("/api/toggle/switches.sw3.hp_ap_off"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+            {tc(
+              "HP-BP-ON",
+              "",
+              sw.hp_bp_on,
+              () => apiCall("/api/toggle/switches.sw3.hp_bp_on"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+            {tc(
+              "HP-BP-OFF",
+              "",
+              sw.hp_bp_off,
+              () => apiCall("/api/toggle/switches.sw3.hp_bp_off"),
+              null,
+              "black",
+              false,
+              true,
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", gap: "10px" }}>
           <KnobToggleSwitch label="FWD CTRL" value={sw.fwd_ctrl ? 2 : 1} onChange={() => apiCall("/api/toggle/switches.sw3.fwd_ctrl")} />

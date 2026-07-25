@@ -32,9 +32,9 @@ export function MetalSwitch({ label, isOn, onToggle, idKey = null, showLed = fal
       className="metal-switch-container"
       id={idKey}
       onClick={onToggle}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', margin: '6px 8px', userSelect: 'none' }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', margin: '4px 6px', userSelect: 'none' }}
     >
-      <svg width="60" height="100" viewBox="0 0 60 100"
+      <svg width="80" height="130" viewBox="0 0 60 100"
         style={{ overflow: 'visible', filter: 'drop-shadow(2px 6px 10px rgba(0,0,0,0.8))' }}
       >
         <defs>
@@ -260,10 +260,10 @@ export function CompactToggle({ label, isOn, onToggle, idKey = null }) {
 export function Toggle3Pos({ labelTop, labelCenter, labelBottom, value, onToggle, idKey = null, showLed = false }) {
   const id = idKey || (labelTop ? labelTop.replace(/\s/g,'_') : Math.random().toString(36).slice(2));
   return (
-    <div className="toggle-3pos-container" id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', margin: '6px 8px', userSelect: 'none' }} onClick={onToggle}>
+    <div className="toggle-3pos-container" id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', margin: '4px 6px', userSelect: 'none' }} onClick={onToggle}>
       <div className="tape-label-real" style={{ marginBottom: '12px', ...getTapeStyle(labelTop) }}>{labelTop}</div>
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <svg width="60" height="100" viewBox="0 0 60 100" style={{ overflow: 'visible', filter: 'drop-shadow(2px 6px 10px rgba(0,0,0,0.8))' }}>
+        <svg width="80" height="130" viewBox="0 0 60 100" style={{ overflow: 'visible', filter: 'drop-shadow(2px 6px 10px rgba(0,0,0,0.8))' }}>
         <defs>
           {/* Hex nut — strong multi-stop left-to-right chrome sweep */}
           <linearGradient id={`hex-${id}`} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -571,46 +571,45 @@ export function Buzzer({ label, isOn, idKey = null }) {
 export function RotarySwitch({ label, value, onChange, idKey = null, topLabel="1", rightLabel="2", pos1Label="", pos2Label="" }) {
   const rotation = value === 1 ? -45 : 45;
   return (
-    <div id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+    <div id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Title label — sits to the left, clear of the dial */}
+        <div className="tape-label-real" style={{ fontSize: '15px', whiteSpace: 'pre-line', textAlign: 'center', marginRight: '16px', maxWidth: '92px', ...getTapeStyle(label) }}>{label}</div>
+
         {/* Left Label */}
-        <div style={{ width: '80px', fontSize: '16px', fontWeight: 'bold', color: '#111', textAlign: 'right', whiteSpace: 'pre-wrap', marginRight: '10px', marginTop: '10px' }}>{pos1Label}</div>
+        <div style={{ width: '100px', fontSize: '18px', fontWeight: 'bold', color: '#111', textAlign: 'right', whiteSpace: 'pre-wrap', marginRight: '12px', marginTop: '14px' }}>{pos1Label}</div>
         
         {/* Square gray faceplate */}
         <div
           onClick={onChange}
           style={{
-            position: 'relative', width: '100px', height: '100px', borderRadius: '8px',
+            position: 'relative', width: '140px', height: '140px', borderRadius: '10px',
             background: '#4a4b4b', boxShadow: 'inset 0 0 2px rgba(255,255,255,0.2), 0 4px 6px rgba(0,0,0,0.5)',
             border: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           }}
         >
-          <div style={{ position: 'absolute', top: '8px', left: '12px', fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{topLabel}</div>
-          <div style={{ position: 'absolute', top: '8px', right: '12px', fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{rightLabel}</div>
+          <div style={{ position: 'absolute', top: '10px', left: '14px', fontSize: '26px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{topLabel}</div>
+          <div style={{ position: 'absolute', top: '10px', right: '14px', fontSize: '26px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>{rightLabel}</div>
 
           {/* Knob */}
           <div style={{
-            position: 'relative', width: '60px', height: '60px',
+            position: 'relative', width: '90px', height: '90px',
             transform: `rotate(${rotation}deg)`, transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           }}>
             <div style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%', borderRadius: '50%', background: '#1a1a1a', boxShadow: '2px 4px 6px rgba(0,0,0,0.8)' }}></div>
             {/* Pointer handle */}
             <div style={{
-              position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
-              width: '18px', height: '40px', borderRadius: '8px', background: '#1a1a1a',
+              position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
+              width: '24px', height: '54px', borderRadius: '10px', background: '#1a1a1a',
               boxShadow: '0 2px 4px rgba(0,0,0,0.6)'
             }}>
-              <div style={{ position: 'absolute', top: '4px', left: '50%', transform: 'translateX(-50%)', width: '4px', height: '15px', borderRadius: '2px', background: '#e8e8e0' }}></div>
+              <div style={{ position: 'absolute', top: '5px', left: '50%', transform: 'translateX(-50%)', width: '6px', height: '20px', borderRadius: '3px', background: '#e8e8e0' }}></div>
             </div>
           </div>
         </div>
 
         {/* Right Label */}
-        <div style={{ width: '80px', fontSize: '16px', fontWeight: 'bold', color: '#111', textAlign: 'left', whiteSpace: 'pre-wrap', marginLeft: '10px', marginTop: '10px' }}>{pos2Label}</div>
-      </div>
-
-      <div style={{ position: 'absolute', bottom: '-45px', width: '100%', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
-        <div className="tape-label-real" style={{ fontSize: '15px', ...getTapeStyle(label) }}>{label}</div>
+        <div style={{ width: '100px', fontSize: '18px', fontWeight: 'bold', color: '#111', textAlign: 'left', whiteSpace: 'pre-wrap', marginLeft: '12px', marginTop: '14px' }}>{pos2Label}</div>
       </div>
     </div>
   );
@@ -899,22 +898,22 @@ export function MastervoltDisplay({ label, value, idKey = null }) {
   return (
     <div id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
       <div style={{
-        width: '90px', height: '90px', borderRadius: '50%', background: '#2c2e33',
-        border: '3px solid #1a1a1a', boxShadow: '0 4px 8px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '10px'
+        width: '150px', height: '150px', borderRadius: '50%', background: '#2c2e33',
+        border: '4px solid #1a1a1a', boxShadow: '0 5px 10px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '18px'
       }}>
-        <div style={{ color: '#aaa', fontSize: '8px', fontWeight: 'bold', letterSpacing: '1px' }}>MASTERVOLT</div>
+        <div style={{ color: '#aaa', fontSize: '13px', fontWeight: 'bold', letterSpacing: '1px' }}>MASTERVOLT</div>
         <div style={{
-          width: '60px', height: '24px', background: '#9eb49e', border: '2px solid #111', borderRadius: '2px',
-          marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'monospace', fontSize: '14px', color: '#111', boxShadow: 'inset 1px 1px 3px rgba(0,0,0,0.5)'
+          width: '98px', height: '40px', background: '#9eb49e', border: '2px solid #111', borderRadius: '3px',
+          marginTop: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'monospace', fontSize: '22px', color: '#111', boxShadow: 'inset 1px 1px 3px rgba(0,0,0,0.5)'
         }}>
           {fmtVal(value)}
         </div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#444', border: '1px solid #111' }}></div>
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#444', border: '1px solid #111' }}></div>
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#444', border: '1px solid #111' }}></div>
+        <div style={{ display: 'flex', gap: '13px', marginTop: '13px' }}>
+          <div style={{ width: '17px', height: '17px', borderRadius: '50%', background: '#444', border: '1px solid #111' }}></div>
+          <div style={{ width: '17px', height: '17px', borderRadius: '50%', background: '#444', border: '1px solid #111' }}></div>
+          <div style={{ width: '17px', height: '17px', borderRadius: '50%', background: '#444', border: '1px solid #111' }}></div>
         </div>
       </div>
       <div className="tape-label-real" style={{ marginTop: '8px', ...getTapeStyle(label) }}>{label}</div>
@@ -926,26 +925,26 @@ export function YellowLedDisplay({ label, value, unit="ohm", idKey = null }) {
   return (
     <div id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
       <div style={{
-        width: '60px', height: '80px', background: '#ffcc00', borderRadius: '4px',
-        border: '1px solid #aa8800', boxShadow: '0 4px 6px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.5)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px'
+        width: '99px', height: '130px', background: '#ffcc00', borderRadius: '5px',
+        border: '1px solid #aa8800', boxShadow: '0 5px 8px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.5)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px'
       }}>
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#222' }}></div>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#222' }}></div>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#222' }}></div>
+        <div style={{ display: 'flex', gap: '9px', marginBottom: '13px' }}>
+          <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#222' }}></div>
+          <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#222' }}></div>
+          <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#222' }}></div>
         </div>
         <div style={{
-          width: '46px', height: '24px', background: '#2a2c26', border: '2px solid #111',
+          width: '74px', height: '38px', background: '#2a2c26', border: '2px solid #111',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'monospace', fontSize: '12px', color: '#8b9977', boxShadow: 'inset 1px 1px 3px #000'
+          fontFamily: 'monospace', fontSize: '18px', color: '#8b9977', boxShadow: 'inset 1px 1px 3px #000'
         }}>
           {fmtVal(value)}
         </div>
-        <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e3a8a', boxShadow: 'inset -1px -1px 2px #000' }}></div>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e3a8a', boxShadow: 'inset -1px -1px 2px #000' }}></div>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e3a8a', boxShadow: 'inset -1px -1px 2px #000' }}></div>
+        <div style={{ display: 'flex', gap: '9px', marginTop: '16px' }}>
+          <div style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#1e3a8a', boxShadow: 'inset -1px -1px 2px #000' }}></div>
+          <div style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#1e3a8a', boxShadow: 'inset -1px -1px 2px #000' }}></div>
+          <div style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#1e3a8a', boxShadow: 'inset -1px -1px 2px #000' }}></div>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px' }}>
@@ -960,10 +959,10 @@ export function DigitalVoltageDisplay({ label, value, unit="V", idKey = null }) 
   return (
     <div id={idKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
       <div style={{
-        background: '#111', border: '2px solid #333', padding: '4px 8px',
-        borderRadius: '4px', boxShadow: 'inset 0 0 6px rgba(0,0,0,0.8)'
+        background: '#111', border: '2px solid #333', padding: '8px 14px',
+        borderRadius: '5px', boxShadow: 'inset 0 0 6px rgba(0,0,0,0.8)', minWidth: '96px', textAlign: 'center'
       }}>
-        <span style={{ fontFamily: 'monospace', fontSize: '20px', color: '#ff2222', textShadow: '0 0 5px #ff0000' }}>{fmtVal(value)}</span>
+        <span style={{ fontFamily: 'monospace', fontSize: '28px', color: '#ff2222', textShadow: '0 0 5px #ff0000' }}>{fmtVal(value)}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px' }}>
         <div className="tape-label-real" style={getTapeStyle(label)}>{label}</div>
