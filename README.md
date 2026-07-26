@@ -135,16 +135,6 @@ Contributions are welcome! Please follow these steps:
 - Refer to [Vite Documentation](https://vitejs.dev/) for advanced configuration
 - Check [React Documentation](https://react.dev/) for best practices
 
-### Running Tests
-```bash
-# Add test commands as needed
-npm run test
-```
-
-## API Documentation
-
-[Add API endpoint documentation here as the project develops]
-
 ## Troubleshooting
 
 ### Port Already in Use
@@ -156,16 +146,6 @@ Ensure all dependencies are installed:
 pip install -r requirements.txt
 cd frontend && npm install
 ```
-
-## License
-
-[Specify your license here]
-
-## Contact & Support
-
-For questions, issues, or support, please:
-- Open an [Issue](https://github.com/LavanyaDiviti891/Matsya-6000/issues)
-- Contact the project maintainers
 
 ## Resources
 
