@@ -21,6 +21,12 @@ def reset_scenario(sc) -> None:
     sc.blink = False
     sc.current_stage = 1
     sc.timer_remaining = sc.timer_total
+    # Clear the spoken text but deliberately leave announce_seq untouched.
+    # The frontend only speaks when announce_seq changes, so resetting the
+    # text (not the counter) means a new scenario run's first confirmation
+    # will still be a fresh, higher seq value and gets spoken normally.
+    sc.announce_text = ""
+    sc.sound_effect = ""
     scenario_locked_paths.clear()
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -242,10 +248,18 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 except Exception as e:
                     print(f"[SCENARIO ERROR] Path failure on {path}: {e}")
 
-        async def confirm_and_advance(msg: str, inject_key: str = None, pause_time: int = READING_PAUSE_SECS):
+        async def confirm_and_advance(msg: str, inject_key: str = None, pause_time: int = READING_PAUSE_SECS, voice_msg: str = None, sound_effect: str = None):
             if inject_key:
                 inject_reading(inject_key)
             sc.feedback_msg = msg
+            # Voice/sound feedback is OPT-IN: only stages that explicitly pass
+            # voice_msg and/or sound_effect trigger anything audible. Every
+            # other stage still updates feedback_msg (shown in the
+            # ScenarioBanner) as before, silently.
+            if voice_msg or sound_effect:
+                sc.announce_text = voice_msg or ""
+                sc.sound_effect = sound_effect or ""
+                sc.announce_seq += 1
             await broadcast_fn() 
             await asyncio.sleep(pause_time)
             sc.current_stage += 1
@@ -272,12 +286,12 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 # ─────────────────────────────────────────────────────────────
                 if sc.current_stage == 1:
                     sc.feedback_msg = "SOP Step 1: Visual Inspection - Confirm all switches are OFF before starting."
-                    await confirm_and_advance("Initial conditions verified.", None, 3)
+                    await confirm_and_advance("Initial conditions verified.", None, 3, voice_msg="Initial conditions verified.")
 
                 elif sc.current_stage == 2:
                     sc.feedback_msg = "SOP Step 2: Set Power selection EB_P to Emergency Battery (E_Batts)."
                     if getattr(sw_p, "e_batts", False) is True:
-                        await confirm_and_advance("EB_P Position Confirmed.", None, 2)
+                        await confirm_and_advance("EB_P Position Confirmed.", None, 2, voice_msg="EB_P Position Confirmed.")
 
                 elif sc.current_stage == 3:
                     sc.feedback_msg = "SOP Step 3: Turn ON MCB-1 for Emergency Battery Port."
@@ -286,7 +300,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 4:
                     sc.feedback_msg = "SOP Step 4: Turn ON toggle switch EMG_LED_P for Emergency Light."
                     if getattr(sw_p, "emg_led_p", False):
-                        await confirm_and_advance("Emergency Light Port Active.", None, 2)
+                        await confirm_and_advance("Emergency Light Port Active.", None, 2, voice_msg="Emergency Light Port Active.")
 
                 elif sc.current_stage == 5:
                     sc.feedback_msg = "SOP Step 5: Validating EB_P Voltage >25V & SOC >90%..."
@@ -304,17 +318,17 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 8:
                     sc.feedback_msg = "SOP Step 8: Turn ON toggle switch AB_P_BMS for Auxiliary battery BMS."
                     if getattr(sw_p, "ab_p_bms", False):
-                        await confirm_and_advance("AB_P BMS Active.", None, 2)
+                        await confirm_and_advance("AB_P BMS Active.", None, 2, voice_msg="AB_P BMS Active.")
 
                 elif sc.current_stage == 9:
                     sc.feedback_msg = "SOP Step 9: Turn ON toggle switch AB_P for Auxiliary battery port power."
                     if getattr(sw_p, "ab_p_power", False):
-                        await confirm_and_advance("AB_P Main Output Powered.", None, 2)
+                        await confirm_and_advance("AB_P Main Output Powered.", None, 2, voice_msg="AB_P Main Output Powered.")
 
                 elif sc.current_stage == 10:
                     sc.feedback_msg = "SOP Step 10: Turn ON UB_P MCB for Utility bus port power."
                     if getattr(sw_p, "ub_mcb", False):
-                        await confirm_and_advance("UB_P MCB Active.", None, 2)
+                        await confirm_and_advance("UB_P MCB Active.", None, 2, voice_msg="UB_P MCB Active.")
 
                 elif sc.current_stage == 11:
                     sc.feedback_msg = "SOP Step 11: Observe Utility Bus Port voltage display UB_P_VOLTAGE (~24VDC)."
@@ -327,7 +341,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 13:
                     sc.feedback_msg = "SOP Step 13: Turn ON Toggle switch INT_LED_P for Internal Lights."
                     if getattr(sw_p, "int_led_p", False):
-                        await confirm_and_advance("Internal Lights Port ON.", None, 2)
+                        await confirm_and_advance("Internal Lights Port ON.", None, 2, voice_msg="Internal Lights Port ON.")
 
                 elif sc.current_stage == 14:
                     sc.feedback_msg = "SOP Step 14: Change Emergency Bus change over switch EB_P from EB_P to UB_P."
@@ -340,7 +354,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 16:
                     sc.feedback_msg = "SOP Step 16: Switch ON the Pilot Panel PC using the monitor power button."
-                    await confirm_and_advance("Pilot Panel PC boot process initiated.", None, 4)
+                    await confirm_and_advance("Pilot Panel PC boot process initiated.", None, 4, voice_msg="Pilot Panel PC boot process initiated.")
 
                 elif sc.current_stage == 17:
                     sc.feedback_msg = "SOP Step 17: Load Matsya6000 software on Pilot PC and read parameters."
@@ -349,7 +363,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 18:
                     sc.feedback_msg = "SOP Step 18: Set Power selection EB_S to Emergency Battery (E_Batts)."
                     if getattr(sw_s, "e_batt_s", False) is True:
-                        await confirm_and_advance("EB_S Position Confirmed.", None, 2)
+                        await confirm_and_advance("EB_S Position Confirmed.", None, 2, voice_msg="EB_S Position Confirmed.")
 
                 elif sc.current_stage == 19:
                     sc.feedback_msg = "SOP Step 19: Turn ON MCB-2 for Emergency Battery Starboard."
@@ -358,7 +372,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 20:
                     sc.feedback_msg = "SOP Step 20: Turn ON toggle switch EMG_LED_S for Emergency Light."
                     if getattr(sw_s, "emg_led_s", False):
-                        await confirm_and_advance("Emergency Light Starboard Active.", None, 2)
+                        await confirm_and_advance("Emergency Light Starboard Active.", None, 2, voice_msg="Emergency Light Starboard Active.")
 
                 elif sc.current_stage == 21:
                     sc.feedback_msg = "SOP Step 21: Validating EB_S Voltage >25V & SOC >90%..."
@@ -371,22 +385,22 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 23:
                     sc.feedback_msg = "SOP Step 23: Set Utility Bus change over switch UB_S to Auxiliary Battery (AB_S)."
                     if getattr(sw_s, "ab_s", False) is True:
-                        await confirm_and_advance("Utility Bus selector set to AB_S.", None, 2)
+                        await confirm_and_advance("Utility Bus selector set to AB_S.", None, 2, voice_msg="Utility Bus selector set to AB_S.")
 
                 elif sc.current_stage == 24:
                     sc.feedback_msg = "SOP Step 24: Turn ON toggle switch AB_S_BMS for Auxiliary battery BMS."
                     if getattr(sw_s, "ab_s_bms", False):
-                        await confirm_and_advance("AB_S BMS Active.", None, 2)
+                        await confirm_and_advance("AB_S BMS Active.", None, 2, voice_msg="AB_S BMS Active.")
 
                 elif sc.current_stage == 25:
                     sc.feedback_msg = "SOP Step 25: Turn ON toggle switch AB_S for Auxiliary battery starboard power."
                     if getattr(sw_s, "ab_s_power", False):
-                        await confirm_and_advance("AB_S Main Output Powered.", None, 2)
+                        await confirm_and_advance("AB_S Main Output Powered.", None, 2, voice_msg="AB_S Main Output Powered.")
 
                 elif sc.current_stage == 26:
                     sc.feedback_msg = "SOP Step 26: Turn ON UB_S MCB for Utility Bus Starboard."
                     if getattr(sw_s, "ub_mcb", False):
-                        await confirm_and_advance("UB_S MCB Active.", None, 2)
+                        await confirm_and_advance("UB_S MCB Active.", None, 2, voice_msg="UB_S MCB Active.")
 
                 elif sc.current_stage == 27:
                     sc.feedback_msg = "SOP Step 27: Observe Utility Bus starboard voltage display UB_S VOLTAGE (~24VDC)."
@@ -399,7 +413,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 29:
                     sc.feedback_msg = "SOP Step 29: Turn ON Toggle switch INT_LED_S for Internal Lights."
                     if getattr(sw_s, "int_led_s", False):
-                        await confirm_and_advance("Internal Lights Starboard ON.", None, 2)
+                        await confirm_and_advance("Internal Lights Starboard ON.", None, 2, voice_msg="Internal Lights Starboard ON.")
 
                 elif sc.current_stage == 30:
                     sc.feedback_msg = "SOP Step 30: Change Emergency Bus change over switch EB_S from EB_S to UB_S."
@@ -412,7 +426,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 32:
                     sc.feedback_msg = "SOP Step 32: Switch ON the Co-Pilot Panel PC and Navigation PCs."
-                    await confirm_and_advance("Co-Pilot and Navigation systems boot sequences initialized.", None, 4)
+                    await confirm_and_advance("Co-Pilot and Navigation systems boot sequences initialized.", None, 4, voice_msg="Co-Pilot and Navigation systems boot sequences initialized.")
 
                 elif sc.current_stage == 33:
                     sc.feedback_msg = "SOP Step 33: Load Matsya6000 software on Co-Pilot PC desktop."
@@ -420,7 +434,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 34:
                     sc.feedback_msg = "SOP Step 34: Confirm Life Support Scrubber is operational and gas flow stabilizes."
-                    await confirm_and_advance("Gas Scrubber airflow loop functional.", None, 4)
+                    await confirm_and_advance("Gas Scrubber airflow loop functional.", None, 4, sound_effect="fan")
 
                 elif sc.current_stage == 35:
                     sc.feedback_msg = "SOP Step 35: Record Oxygen, CO2, pressure, and humidity from HSSS display."
@@ -433,7 +447,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 37:
                     sc.feedback_msg = "SOP Step 37: Turn ON toggle switch MB_P_BMS for Main Battery Port BMS."
                     if getattr(sw_p, "mb_p_bms", False):
-                        await confirm_and_advance("MB_P BMS initialized.", None, 2)
+                        await confirm_and_advance("MB_P BMS initialized.", None, 2, voice_msg="MB_P BMS initialized.")
 
                 elif sc.current_stage == 38:
                     sc.feedback_msg = "SOP Step 38: Record voltage, temperature and SOC of MB_P in GUI."
@@ -447,13 +461,13 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 40:
                     sc.feedback_msg = "SOP Step 40: Turn ON toggle switch PDE_P_OLR for Overload Relay Port."
                     if getattr(sw_p, "pde_p_olr", False):
-                        await confirm_and_advance("PDE-P-OLR Status confirmed.", None, 2)
+                        await confirm_and_advance("PDE-P-OLR Status confirmed.", None, 2, voice_msg="PDE-P-OLR Status confirmed.")
 
                 elif sc.current_stage == 41:
                     sc.feedback_msg = "SOP Step 41: Sequentially power UP Main Battery packs MB_P_1 through MB_P_5."
                     if (getattr(sw_p, "mb_p_1", False) and getattr(sw_p, "mb_p_2", False) and 
                         getattr(sw_p, "mb_p_3", False) and getattr(sw_p, "mb_p_4", False) and getattr(sw_p, "mb_p_5", False)):
-                        await confirm_and_advance("All 5 Port Battery packs online.", None, 3)
+                        await confirm_and_advance("All 5 Port Battery packs online.", None, 3, voice_msg="All 5 Port Battery packs online.")
 
                 elif sc.current_stage == 42:
                     sc.feedback_msg = "SOP Step 42: Turn ON (Pull UP) the contactor switch MB_P-PDE_P."
@@ -476,12 +490,12 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 46:
                     sc.feedback_msg = "SOP Step 46: Verify telemetry and water ingress status loops for IDE_P."
-                    await confirm_and_advance("IDE_P data structures stable.", None, 3)
+                    await confirm_and_advance("IDE_P data structures stable.", None, 3, voice_msg="IDE_P data structures stable.")
 
                 elif sc.current_stage == 47:
                     sc.feedback_msg = "SOP Step 47: Turn ON toggle switch MB_S_BMS for Main Battery Starboard BMS."
                     if getattr(sw_s, "mb_s_bms", False):
-                        await confirm_and_advance("MB_S BMS initialized.", None, 2)
+                        await confirm_and_advance("MB_S BMS initialized.", None, 2, voice_msg="MB_S BMS initialized.")
 
                 elif sc.current_stage == 48:
                     sc.feedback_msg = "SOP Step 48: Record voltage, temperature and SOC of MB_S in GUI."
@@ -495,13 +509,13 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 50:
                     sc.feedback_msg = "SOP Step 50: Turn ON toggle switch PDE_S_OLR for Overload Relay Starboard."
                     if getattr(sw_s, "pde_s_olr", False):
-                        await confirm_and_advance("PDE-S-OLR Status confirmed.", None, 2)
+                        await confirm_and_advance("PDE-S-OLR Status confirmed.", None, 2, voice_msg="PDE-S-OLR Status confirmed.")
 
                 elif sc.current_stage == 51:
                     sc.feedback_msg = "SOP Step 51: Sequentially power UP Main Battery packs MB_S_1 through MB_S_5."
                     if (getattr(sw_s, "mb_s_1", False) and getattr(sw_s, "mb_s_2", False) and 
                         getattr(sw_s, "mb_s_3", False) and getattr(sw_s, "mb_s_4", False) and getattr(sw_s, "mb_s_5", False)):
-                        await confirm_and_advance("All 5 Starboard Battery packs online.", None, 3)
+                        await confirm_and_advance("All 5 Starboard Battery packs online.", None, 3, voice_msg="All 5 Starboard Battery packs online.")
 
                 elif sc.current_stage == 52:
                     sc.feedback_msg = "SOP Step 52: Turn ON (Pull UP) the contactor switch MB_S-PDE_S."
@@ -524,7 +538,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 56:
                     sc.feedback_msg = "SOP Step 56: Verify telemetry and water ingress status loops for IDE_S."
-                    await confirm_and_advance("IDE_S data structures stable.", None, 3)
+                    await confirm_and_advance("IDE_S data structures stable.", None, 3, voice_msg="IDE_S data structures stable.")
 
                 elif sc.current_stage == 57:
                     sc.feedback_msg = "SOP Step 57: Comprehensive communication validation across all units."
@@ -799,7 +813,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                         print(f"[DEBUG Stage 104] Waiting for PC ON. Current -> sdwp_1: {val_p1} | sdws_1: {val_s1}")
 
                     if is_pc_on(val_p1) and is_pc_on(val_s1):
-                        await confirm_and_advance("Approaching Seabed. 100kg weights dropped. Buoyancy neutralized.", "depth_seabed", 3)
+                        await confirm_and_advance("Approaching Seabed. 100kg weights dropped. Buoyancy neutralized.", "depth_seabed", 3, voice_msg="Drop weight dropped.")
 
                 elif sc.current_stage == 105:
                     sc.feedback_msg = "Phase 4: Seabed Sampling. Set Port 2, 3 & Stbd 2, 3 weights to PC ON."
@@ -812,7 +826,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                         print(f"[DEBUG Stage 105] Waiting for PC ON. Port 2,3: {val_p2},{val_p3} | Stbd 2,3: {val_s2},{val_s3}")
 
                     if is_pc_on(val_p2) and is_pc_on(val_p3) and is_pc_on(val_s2) and is_pc_on(val_s3):
-                        await confirm_and_advance("Seabed reached (5500m). Payload sampling complete. 200kg weights dropped.", "sampling_seabed", 3)
+                        await confirm_and_advance("Seabed reached (5500m). Payload sampling complete. 200kg weights dropped.", "sampling_seabed", 3, voice_msg="Drop weight dropped.")
 
                 elif sc.current_stage == 106:
                     sc.feedback_msg = "Phase 5: Start Ascent. Set Port 4, 5 & Stbd 4, 5 weights to PC ON."
@@ -825,7 +839,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                         print(f"[DEBUG Stage 106] Waiting for PC ON. Port 4,5: {val_p4},{val_p5} | Stbd 4,5: {val_s4},{val_s5}")
 
                     if is_pc_on(val_p4) and is_pc_on(val_p5) and is_pc_on(val_s4) and is_pc_on(val_s5):
-                        await confirm_and_advance("300kg dropped. Positive buoyancy achieved. Beginning ascent.", "ascent_start", 3)
+                        await confirm_and_advance("300kg dropped. Positive buoyancy achieved. Beginning ascent.", "ascent_start", 3, voice_msg="Drop weight dropped.")
 
                 # ─────────────────────────────────────────────────────────────
                 # PHASE 5: AUTO-ADVANCING SURFACING ANIMATIONS
@@ -863,6 +877,8 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                     sc.success = True
                     sc.active = False
                     sc.result_message = "FULL MISSION SUCCESS! Powering, Ops Checks, and 5500m Dive complete."
+                    sc.announce_text = "Mission complete. Full success."
+                    sc.announce_seq += 1
                     await broadcast_fn()
                     await asyncio.sleep(8)
                     reset_scenario(sc)
@@ -890,6 +906,8 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
             sc.success        = False
             sc.active         = False
             sc.result_message = f"⏰ Time expired at Stage {sc.current_stage}/{TOTAL_STAGES}. Mission failed."
+            sc.announce_text  = "Time expired. Mission failed."
+            sc.announce_seq  += 1
 
         await broadcast_fn()
         await asyncio.sleep(8)

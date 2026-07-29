@@ -15,6 +15,19 @@ class ScenarioTelemetry(BaseModel):
     blink: bool = False
     current_stage: int = 1
     feedback_msg: str = ""
+    # Voice announcement channel: the frontend speaks `announce_text` aloud
+    # whenever `announce_seq` increases. A monotonically increasing counter
+    # (rather than just watching feedback_msg) lets the frontend tell "a new
+    # confirmation just happened" apart from "the same message is still
+    # showing" or "the message was cleared" — both of which are valid states
+    # for feedback_msg but should NOT re-trigger speech.
+    announce_text: str = ""
+    announce_seq: int = 0
+    # Non-speech sound effects (e.g. a fan running) that should play instead
+    # of / alongside a spoken line. Uses the same announce_seq counter as
+    # the trigger — the frontend checks both announce_text and sound_effect
+    # whenever announce_seq changes.
+    sound_effect: str = ""
 
 
 # ----------------- ATOMIC TYPES -----------------

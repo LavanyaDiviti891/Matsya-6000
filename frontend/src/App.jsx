@@ -9,6 +9,7 @@ import {
   ImagingLayout, SensorsLayout, LoggingLayout, StatusLayout,
   Kwh50Layout, MccLayout
 } from './components/PageLayouts'
+import { useVoiceAnnouncer } from './hooks/useVoiceAnnouncer'
 
 const TABS = [
   "Main", "Main-2", "HSSS", "Ballast", "Propulsion", "POWER", "Imaging", 
@@ -56,6 +57,10 @@ function App() {
       setActiveTab("Main")
     }
   }, [appState?.is_powered_on])
+
+  // Voice confirmation for pilot actions (e.g. "100kg weights dropped.")
+  // Runs globally regardless of which tab is active, including Main-2.
+  useVoiceAnnouncer(appState?.scenario)
 
   if (!appState) {
     return <div className="loading">Connecting to Submersible Data Stream...</div>
