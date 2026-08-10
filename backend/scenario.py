@@ -44,7 +44,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
         # Config
         READING_PAUSE_SECS = 4   
-        TOTAL_STAGES       = 113
+        TOTAL_STAGES       = 103
 
         # ── Helper Function for 3-Way Switches ──
         def is_pc_on(val):
@@ -72,10 +72,10 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 writes = {
                     "power.aux_s.voltage.value": round(random.uniform(25.5, 27.0), 2),
                     "power.aux_s.soc.value": round(random.uniform(92.0, 98.0), 1),
-                    "switches.s.eb_b_status": round(random.uniform(25.5, 27.0), 2),
+                    "switches.s.eb_s_status": round(random.uniform(25.5, 27.0), 2),
                 }
             elif name == "eb_s_ir":
-                writes = {"switches.s.ib_insulation": round(random.uniform(1.8, 2.5), 2)}
+                writes = {"switches.s.eb_s_insulation": round(random.uniform(1.8, 2.5), 2)}
             elif name == "ub_s":
                 writes = {
                     "power.ub_stbd.voltage.value": round(random.uniform(24.0, 24.5), 2),
@@ -254,7 +254,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
         # ── Initialize State ──────────────────────────────────────────────────
         sc.active          = True
         sc.success         = None
-        sc.mission_name    = "FULL MATSYA SEQUENCE - MANUAL TRIGGERS (113 STEPS)"
+        sc.mission_name    = "MATSYA POWER-UP & PROPULSION SOP - MANUAL TRIGGERS (103 STEPS)"
         sc.timer_total     = 3600
         sc.timer_remaining = 3600
         sc.result_message  = ""
@@ -313,7 +313,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 10:
                     sc.feedback_msg = "SOP Step 10: Turn ON UB_P MCB for Utility bus port power."
-                    if getattr(sw_p, "ub_mcb", False):
+                    if getattr(sw_p, "ub_p_mcb", False):
                         await confirm_and_advance("UB_P MCB Active.", None, 2)
 
                 elif sc.current_stage == 11:
@@ -348,7 +348,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 18:
                     sc.feedback_msg = "SOP Step 18: Set Power selection EB_S to Emergency Battery (E_Batts)."
-                    if getattr(sw_s, "e_batt_s", False) is True:
+                    if getattr(sw_s, "e_batts", False) is True:
                         await confirm_and_advance("EB_S Position Confirmed.", None, 2)
 
                 elif sc.current_stage == 19:
@@ -385,7 +385,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 26:
                     sc.feedback_msg = "SOP Step 26: Turn ON UB_S MCB for Utility Bus Starboard."
-                    if getattr(sw_s, "ub_mcb", False):
+                    if getattr(sw_s, "ub_s_mcb", False):
                         await confirm_and_advance("UB_S MCB Active.", None, 2)
 
                 elif sc.current_stage == 27:
@@ -403,7 +403,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 30:
                     sc.feedback_msg = "SOP Step 30: Change Emergency Bus change over switch EB_S from EB_S to UB_S."
-                    if getattr(sw_s, "e_batt_s", True) is False:
+                    if getattr(sw_s, "e_batts", True) is False:
                         await confirm_and_advance("Emergency Bus changed over to UB_S successfully.", None, 2)
 
                 elif sc.current_stage == 31:
@@ -441,7 +441,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 39:
                     sc.feedback_msg = "SOP Step 39: Turn ON toggle switch PDE_P_OIM for Port PDE OIM Power."
-                    if getattr(sw_p, "pde_p_oim", False):
+                    if getattr(sw_p, "oim_p", False):
                         await confirm_and_advance("Checking 148V insulation IR parameters.", "pde_p_ir", READING_PAUSE_SECS)
 
                 elif sc.current_stage == 40:
@@ -536,7 +536,7 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
 
                 elif sc.current_stage == 59:
                     sc.feedback_msg = "SOP Step 59: Change Position of Emergency Bus change over selectors EB_P & EB_S back to EB."
-                    if getattr(sw_p, "e_batts", False) is True and getattr(sw_s, "e_batt_s", False) is True:
+                    if getattr(sw_p, "e_batts", False) is True and getattr(sw_s, "e_batts", False) is True:
                         await confirm_and_advance("Emergency Bus switchover confirmed.", None, 3)
 
                 elif sc.current_stage == 60:
@@ -783,86 +783,12 @@ async def run_poweringup_scenario(app_state, broadcast_fn):
                 elif sc.current_stage == 103:
                     sc.feedback_msg = "Propulsion Check: Enable the Joystick in the Main GUI."
                     if getattr(sidebar, "joystick", False):
-                        await confirm_and_advance("Joystick control ENABLED.", None, 2)
+                        await confirm_and_advance("Joystick control ENABLED. Propulsion system fully live.", None, 2)
 
-                # ─────────────────────────────────────────────────────────────
-                # PHASE 4 & 5: SEABED OPERATIONS & ASCENT (Steps 104 - 106)
-                # ─────────────────────────────────────────────────────────────
                 elif sc.current_stage == 104:
-                    sc.feedback_msg = "Phase 4: Seabed Approach. Set Port 1 & Stbd 1 weights to PC ON."
-                    
-                    val_p1 = getattr(sw_p, "port_side_sdw_1", None)
-                    # FIX: Read sdws_1 from sw_p
-                    val_s1 = getattr(sw_p, "starboard_side_sdw_1", None)
-
-                    if sc.timer_remaining % 5 == 0:
-                        print(f"[DEBUG Stage 104] Waiting for PC ON. Current -> sdwp_1: {val_p1} | sdws_1: {val_s1}")
-
-                    if is_pc_on(val_p1) and is_pc_on(val_s1):
-                        await confirm_and_advance("Approaching Seabed. 100kg weights dropped. Buoyancy neutralized.", "depth_seabed", 3)
-
-                elif sc.current_stage == 105:
-                    sc.feedback_msg = "Phase 4: Seabed Sampling. Set Port 2, 3 & Stbd 2, 3 weights to PC ON."
-                    
-                    val_p2, val_p3 = getattr(sw_p, "port_side_sdw_2", None), getattr(sw_p, "port_side_sdw_3", None)
-                    # FIX: Read sdws_2 and sdws_3 from sw_p
-                    val_s2, val_s3 = getattr(sw_p, "starboard_side_sdw_2", None), getattr(sw_p, "starboard_side_sdw_3", None)
-
-                    if sc.timer_remaining % 5 == 0:
-                        print(f"[DEBUG Stage 105] Waiting for PC ON. Port 2,3: {val_p2},{val_p3} | Stbd 2,3: {val_s2},{val_s3}")
-
-                    if is_pc_on(val_p2) and is_pc_on(val_p3) and is_pc_on(val_s2) and is_pc_on(val_s3):
-                        await confirm_and_advance("Seabed reached (5500m). Payload sampling complete. 200kg weights dropped.", "sampling_seabed", 3)
-
-                elif sc.current_stage == 106:
-                    sc.feedback_msg = "Phase 5: Start Ascent. Set Port 4, 5 & Stbd 4, 5 weights to PC ON."
-                    
-                    val_p4, val_p5 = getattr(sw_p, "port_side_sdw_4", None), getattr(sw_p, "port_side_sdw_5", None)
-                    # FIX: Read sdws_4 and sdws_5 from sw_p
-                    val_s4, val_s5 = getattr(sw_p, "starboard_side_sdw_4", None), getattr(sw_p, "starboard_side_sdw_5", None)
-
-                    if sc.timer_remaining % 5 == 0:
-                        print(f"[DEBUG Stage 106] Waiting for PC ON. Port 4,5: {val_p4},{val_p5} | Stbd 4,5: {val_s4},{val_s5}")
-
-                    if is_pc_on(val_p4) and is_pc_on(val_p5) and is_pc_on(val_s4) and is_pc_on(val_s5):
-                        await confirm_and_advance("300kg dropped. Positive buoyancy achieved. Beginning ascent.", "ascent_start", 3)
-
-                # ─────────────────────────────────────────────────────────────
-                # PHASE 5: AUTO-ADVANCING SURFACING ANIMATIONS
-                # ─────────────────────────────────────────────────────────────
-                elif sc.current_stage == 107:
-                    sc.feedback_msg = "Phase 5: Surface Reached. Auto-Sequence 'Surface open'..."
-                    await broadcast_fn()
-                    await asyncio.sleep(2.0)
-                    
-                    mb = getattr(ballast, "main_ballast", None)
-
-                    for i in range(1, 11):
-                        bars = "█" * i + "░" * (10 - i)
-                        sc.feedback_msg = f"Blowing Ballast Tanks (Emptying): [{bars}] {i*10}%"
-                        
-                        slider_val = -150 + (i * 30) 
-                        if mb:
-                            if hasattr(mb, "act3_pos"): mb.act3_pos = slider_val
-                            if hasattr(mb, "act3_pos2"): mb.act3_pos2 = slider_val
-                            if hasattr(mb, "act3_pos3"): mb.act3_pos3 = slider_val
-                            
-                        await broadcast_fn()
-                        await asyncio.sleep(0.4)
-                        
-                    await confirm_and_advance("Surfaced. Main Ballast active.", "surfaced", 2)
-
-                # FIX: Increment numbering (changed from 107 to 108 to fix duplicated elif blocks)
-                elif sc.current_stage == 108:
-                    sc.feedback_msg = "Phase 5: Blow Ballast (Freeboard). Turn ON FREEBOARD button."
-                    if getattr(sw3, "freeboard_p", False) or getattr(sw3, "freeboard_s", False):
-                        await confirm_and_advance("Tanks blown. Freeboard established at 1.5m.", "freeboard", READING_PAUSE_SECS)
-
-                # FIX: Increment numbering (changed from 108 to 109)
-                elif sc.current_stage == 109:
                     sc.success = True
                     sc.active = False
-                    sc.result_message = "FULL MISSION SUCCESS! Powering, Ops Checks, and 5500m Dive complete."
+                    sc.result_message = "MISSION SUCCESS! Power-Up, Ops Checks, and Propulsion (Thrusters) verified."
                     await broadcast_fn()
                     await asyncio.sleep(8)
                     reset_scenario(sc)

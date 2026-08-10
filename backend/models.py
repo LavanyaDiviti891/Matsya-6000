@@ -1,20 +1,62 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
-# ----------------- SCENARIO STATE -----------------
+# ----------------- RULE ENGINE / SOP STATE -----------------
+class EventLogEntry(BaseModel):
+    timestamp: str = ""
+    side: str = ""                       # PORT / STARBOARD / GLOBAL
+    switch: str = ""
+    field_path: str = ""                 # e.g. "switches.p.emg_led_p" -- lets the
+                                          # frontend correlate a toggle with its result
+    previous_state: str = ""
+    new_state: str = ""
+    expected_action: str = ""
+    action_type: str = ""                # CORRECT / FLEXIBLE_ORDER / OUT_OF_ORDER / EARLY_ACTION / WARNING / NO_GO
+    warning: str = ""
+    go_no_go: str = ""                   # GO / NO_GO / ""
+    measured_voltage: float = 0.0
+    measured_soc: float = 0.0
+    measured_temperature: float = 0.0
+    measured_ir: float = 0.0
+    alarm_status: str = "NONE"
+
+
 class ScenarioTelemetry(BaseModel):
     active: bool = False
-    mission_name: str = ""
-    timer_total: int = 3600
-    timer_remaining: int = 3600
-    target_depth: float = 5500.0
-    depth_rate: float = 30.0
-    success: Optional[bool] = None
-    result_message: str = ""
+    mission_name: str = "MATSYA Power-Up SOP"
+    feedback_msg: str = "Awaiting power-up sequence start."
+    active_side: str = ""    # "" / "P" / "S" -- which side is currently being powered up
+    next_step_p: str = "[P] Check/confirm E_BATTS position, then activate EMG_LED and run SCRUBBER_CO2_CHECK (any order)"
+    next_step_s: str = "[S] Check/confirm E_BATTS position, then activate EMG_LED and run SCRUBBER_CO2_CHECK (any order)"
+    last_result: str = ""
     blink: bool = False
-    current_stage: int = 1
-    feedback_msg: str = ""
+    global_power_available: bool = False
+    communication_system_ready: bool = False
+    power_control_system_ready: bool = False
+    last_action_type: str = ""
+    last_warning: str = ""
+    last_go_no_go: str = ""
+    event_log: List[EventLogEntry] = []
+
+    # Post power-up phases (SOP order, steps 63-108):
+    # IMAGING -> SENSORS -> COMMS -> BALLAST -> PROPULSION
+    # (each phase only activates once the previous one is complete)
+    imaging_active: bool = False
+    imaging_complete: bool = False
+    next_step_imaging: str = ""
+    sensors_active: bool = False
+    sensors_complete: bool = False
+    next_step_sensors: str = ""
+    comms_active: bool = False
+    comms_complete: bool = False
+    next_step_comms: str = ""
+    ballast_active: bool = False
+    ballast_complete: bool = False
+    next_step_ballast: str = ""
+    propulsion_active: bool = False
+    propulsion_complete: bool = False
+    next_step_propulsion: str = ""
 
 
 # ----------------- ATOMIC TYPES -----------------
@@ -103,6 +145,12 @@ class SidebarControls(BaseModel):
     ir_ok: bool = True
     water_ingress: bool = False
     comm_status: bool = False
+    # Per-side EMCS/WAGO power state. `comm_status` above stays as the
+    # global OR (for anything that only cares "is EMCS up at all"), but the
+    # PORT and STARBOARD switch pages must react to their OWN side only —
+    # otherwise powering WAGO on one side lights up both pages.
+    comm_status_p: bool = False
+    comm_status_s: bool = False
 
 
 class LedIndicators(BaseModel):
@@ -594,29 +642,53 @@ class SwitchesCategory_P(BaseModel):
     e_batts: bool = False
     ub_p_mcb: bool = False
     ub_p_mcb2: bool = False
-    ub_p: bool = False
 
-    # Custom layout fields (mirrors SwitchesCategory_S)
-    pde_p_olr_rst: bool = False
+    # Custom layout fields (frontend-specific names)
+    pde_p_clr_rst: bool = False
     oim_p_reset: bool = False
-    pde_p_oim: bool = False
     ab_p_power: bool = False
+    pde_p_dim: bool = False
     ide_p_1: bool = False
-    emg_led_p: bool = False
-    int_led_p: bool = False
-    pde_p_24v: bool = False
-    pde_p_24v_main: bool = False
-    pde_p_olr: bool = False
-    main_24_p: bool = False
-
-    # Additional frontend widgets (SwitchesPLayout)
     ide_2: bool = False
     spare_2: bool = False
     oim_p: bool = False
     spare_p: bool = False
     wago_p: bool = False
+    pde_p_24v: bool = False
+    mb_1: bool = False
+    mb_2: bool = False
+    mb_3: bool = False
+    mb_4: bool = False
+    mb_5: bool = False
+    pde_p_olr: bool = False
+    pde_p_148: bool = False
+    pde_p_24v_main: bool = False
+    emg_led_p: bool = False
+    int_led_p: bool = False
+    # SDW aliases (frontend uses sdwp_1..10 / sdws_1..10)
+    sdwp_1: bool = False
+    sdwp_2: bool = False
+    sdwp_3: bool = False
+    sdwp_4: bool = False
+    sdwp_5: bool = False
+    sdwp_6: bool = False
+    sdwp_7: bool = False
+    sdwp_8: bool = False
+    sdwp_9: bool = False
+    sdwp_10: bool = False
+    sdws_1: bool = False
+    sdws_2: bool = False
+    sdws_3: bool = False
+    sdws_4: bool = False
+    sdws_5: bool = False
+    sdws_6: bool = False
+    sdws_7: bool = False
+    sdws_8: bool = False
+    sdws_9: bool = False
+    sdws_10: bool = False
     sdw_master_p: bool = False
     sdw_master_s: bool = False
+    sdw_master_stbd: bool = False
     sdw_master_stbd_p: bool = False
     sdw_master_stbd_s: bool = False
 
@@ -648,10 +720,6 @@ class SwitchesCategory_S(BaseModel):
     uw_camera_s: bool = False
     sonar: bool = False
     surface_ins: bool = False
-    aps_2: bool = False
-    vhf: bool = False
-    uwt: bool = False
-    e_batt_s: bool = False
 
     # Service Drop Weight Switches
     port_side_sdw_1: bool = False
@@ -726,10 +794,26 @@ class SwitchesCategory_S(BaseModel):
     pde_s_olr: bool = False
     mb_s_pde_s: bool = False
     main_24_s: bool = False
+    pde_s_148: bool = False
+
+    # General control switch aliases (frontend-specific)
+    e_batt_s: bool = False
+    aps_2: bool = False
+    joystick_p: bool = False
     emg_led_s: bool = False
-    int_led_s: bool = False
+    co2_s: bool = False
+    co2_p: bool = False
+    vhs_pow_s: bool = False
+    vhs_pow_p: bool = False
+    uwt: bool = False
+    vhf: bool = False
     mbs_ctrl: bool = False
     dc_fan: bool = False
+    emg_led_p: bool = False
+    int_led_s: bool = False
+    int_led_p: bool = False
+    uw_led_s: bool = False
+    uw_led_p: bool = False
 
 class SwitchesSW3(BaseModel):
     # Emergency Jettisoning - Trim
@@ -798,11 +882,15 @@ class SwitchesSW3(BaseModel):
     edw_s3: bool = False
     edw_s4: bool = False
 
-    # Bottom controls
-    fb_p: bool = False
-    dive_in: bool = False
-    hp_ap: bool = False
-    hp_bp: bool = False
+    # Bottom controls (field names match SwitchesLayout.jsx apiCall paths exactly)
+    freeboard_p: bool = False
+    freeboard_s: bool = False
+    dive_in_on: bool = False
+    dive_in_off: bool = False
+    hp_ap_on: bool = False
+    hp_ap_off: bool = False
+    hp_bp_on: bool = False
+    hp_bp_off: bool = False
 
     # Rotary controls
     fwd_ctrl: bool = False
@@ -844,18 +932,6 @@ class SwitchesSW3(BaseModel):
     ins_148_s: bool = False
     ins_pseb_s: bool = False
     ins_sp1_s: bool = False
-
-    # Additional frontend widgets (Switches3Layout)
-    ejx_s1: bool = False
-    ejx_s2: bool = False
-    freeboard_p: bool = False
-    freeboard_s: bool = False
-    dive_in_on: bool = False
-    dive_in_off: bool = False
-    hp_ap_on: bool = False
-    hp_ap_off: bool = False
-    hp_bp_on: bool = False
-    hp_bp_off: bool = False
 
 class SwitchesState(BaseModel):
     p: SwitchesCategory_P = SwitchesCategory_P()

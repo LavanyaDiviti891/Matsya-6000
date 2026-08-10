@@ -1,4 +1,4 @@
-#!/Users/lavanyadiviti/Matsya-6000-SOP3/backend/venv/bin/python
+#!/Users/lavanyadiviti/matsya/backend/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { fmtVal } from '../utils';
 
 export function VerticalGauge({
@@ -50,14 +50,40 @@ export function SimpleRpmBox({ label, value, idKey = null }) {
   );
 }
 
+const SUB_VIEWS = [
+  { key: 'front', label: 'Front', src: '/sub_front.jpeg' },
+  { key: 'back',  label: 'Back',  src: '/sub_back.jpeg'  },
+  { key: 'side',  label: 'Side',  src: '/sub_side.jpeg'  },
+  { key: 'top',   label: 'Top',   src: '/sub_top.jpeg'   },
+  { key: 'bottom',label: 'Bottom',src: '/sub_bottom.jpeg'},
+];
+
 export function CompassBox({ idKey = null }) {
+  const [active, setActive] = useState('side');
+  const current = SUB_VIEWS.find(v => v.key === active);
+
   return (
-    <div className="compass-box" id={idKey}>
-      <span className="compass-label compass-n">N</span>
-      <span className="compass-label compass-s">S</span>
-      <span className="compass-label compass-w">W</span>
-      <span className="compass-label compass-e">E</span>
-      <div className="compass-inner"></div>
+    <div className="sub-viewer" id={idKey}>
+      <div className="sub-viewer-img-wrap">
+        <img
+          key={current.src}
+          src={current.src}
+          alt={current.label + ' view of submersible'}
+          className="sub-viewer-img"
+        />
+        <div className="sub-viewer-badge">{current.label} View</div>
+      </div>
+      <div className="sub-viewer-nav">
+        {SUB_VIEWS.map(v => (
+          <button
+            key={v.key}
+            className={`sub-view-btn${active === v.key ? ' active' : ''}`}
+            onClick={() => setActive(v.key)}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

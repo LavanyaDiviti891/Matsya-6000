@@ -10,7 +10,7 @@ import glob
 from datetime import datetime
 
 from models import MatsyaUIState
-from scenario import run_poweringup_scenario, reset_scenario
+import rule_engine
 
 app = FastAPI()
 
@@ -45,13 +45,6 @@ async def websocket_endpoint(websocket: WebSocket):
 async def broadcast():
     if not connected_clients:
         return
-        
-    # ENFORCE SOP RULES: Zero out voltage if UB_MCB is not active
-    if not app_state.switches.p.ub_mcb:
-        app_state.switches.p.ub_voltage = 0.0
-    if not app_state.switches.s.ub_mcb:
-        app_state.switches.s.ub_voltage = 0.0
-
     data = app_state.model_dump()
     disconnected = set()
     for client in connected_clients:
@@ -64,7 +57,6 @@ async def broadcast():
 
 # ----------------- APIs & SIMULATION -----------------
 simulator_task = None
-scenario_task = None
 
 
 class SimState:
@@ -226,6 +218,7 @@ async def toggle_power():
 async def toggle_joystick():
     s = app_state.sidebar
     s.joystick = not s.joystick
+    rule_engine.recompute_derived_flags(app_state)
     await broadcast()
     return {"status": "ok"}
 
@@ -234,6 +227,7 @@ async def toggle_joystick():
 async def toggle_thrusters_enable():
     s = app_state.sidebar
     s.thrusters_enable = not s.thrusters_enable
+    rule_engine.recompute_derived_flags(app_state)
     await broadcast()
     return {"status": "ok"}
 
@@ -253,11 +247,31 @@ async def generic_toggle(state_path: str, val: Optional[str] = Form(None)):
     for p in parts[:-1]:
         obj = getattr(obj, p)
 
+    previous_val = getattr(obj, parts[-1])
+
     if val is not None:
         setattr(obj, parts[-1], val)
     else:
-        current_val = getattr(obj, parts[-1])
-        setattr(obj, parts[-1], not current_val)
+        setattr(obj, parts[-1], not previous_val)
+
+    new_val = getattr(obj, parts[-1])
+
+    # Route switch actions through the SOP rule engine's classifier — this
+    # generates the ACCEPTED/WARNING/OUT_OF_ORDER event-log entries and is
+    # only meaningful for actual power-up switches.
+    result = None
+    if state_path.startswith("switches."):
+        result = rule_engine.evaluate_action(app_state, state_path, previous_val, new_val)
+        print(f"[SOP] toggled: {state_path} = {new_val} | "
+              f"classified: {result.action_type if result else 'NOT IN FIELD_MAP'} | "
+              f"next_step_p: {app_state.scenario.next_step_p}")
+
+    # Recompute the post-power-up phase state (Imaging -> Sensors -> Comms ->
+    # Ballast -> Propulsion) on EVERY toggle, not just switches.* ones — the
+    # phase checks read imaging.*, sensors.*, propulsion_detail.*, etc, so
+    # skipping this for those paths left the "next step" banner frozen even
+    # after the operator flipped the correct switch (e.g. HD Camera P).
+    rule_engine.recompute_derived_flags(app_state)
 
     await broadcast()
     return {"status": "ok"}
@@ -310,25 +324,21 @@ async def sim_command(cmd: str):
     return {"status": "ok"}
 
 
-# ----------------- SCENARIO (SOP) -----------------
+# ----------------- SOP RULE-ENGINE SCENARIO -----------------
 @app.post("/api/scenario/poweringup/start")
 async def start_poweringup_scenario():
-    global scenario_task
-    if scenario_task is None or scenario_task.done():
-        reset_scenario(app_state.scenario)
-        scenario_task = asyncio.create_task(
-            run_poweringup_scenario(app_state, broadcast)
-        )
-        return {"status": "Scenario started"}
-    return {"status": "Scenario already running"}
+    app_state.scenario.active = True
+    app_state.scenario.feedback_msg = "Power-up SOP active. Operate switches; the rule engine will classify each action."
+    rule_engine.recompute_derived_flags(app_state)
+    await broadcast()
+    return {"status": "Scenario started"}
 
 
 @app.post("/api/scenario/poweringup/stop")
 async def stop_poweringup_scenario():
-    global scenario_task
-    if scenario_task and not scenario_task.done():
-        scenario_task.cancel()
-        scenario_task = None
-    reset_scenario(app_state.scenario)
+    app_state.scenario.active = False
+    app_state.scenario.feedback_msg = "Power-up SOP stopped."
+    rule_engine.reset_engine(app_state)  # Resets telemetry & clears screen power
+    app_state.scenario.event_log = []
     await broadcast()
     return {"status": "Scenario stopped"}
