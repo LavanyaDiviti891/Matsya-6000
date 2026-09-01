@@ -1,0 +1,54 @@
+# ---------- Python / FastAPI backend ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Simulation data (large/generated; drop this line if it should be tracked)
+sim_data_processed/
+
+# Logs
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---------- Node / React / Vite frontend ----------
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories
+*.local
