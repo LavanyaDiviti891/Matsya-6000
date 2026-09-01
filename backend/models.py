@@ -1,20 +1,118 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
-# ----------------- SCENARIO STATE -----------------
-class ScenarioTelemetry(BaseModel):
+# ----------------- SAMPLE COLLECTION SCENARIO (ported from old UI) -----------------
+class SampleScenarioTelemetry(BaseModel):
     active: bool = False
     mission_name: str = ""
-    timer_total: int = 3600
-    timer_remaining: int = 3600
-    target_depth: float = 5500.0
-    depth_rate: float = 30.0
     success: Optional[bool] = None
     result_message: str = ""
-    blink: bool = False
-    current_stage: int = 1
+    current_stage: int = 0
     feedback_msg: str = ""
+
+
+class Co2ScenarioTelemetry(BaseModel):
+    active: bool = False
+    mission_name: str = ""
+    success: Optional[bool] = None
+    result_message: str = ""
+    current_stage: int = 0
+    feedback_msg: str = ""
+    timer_total: int = 60
+    timer_remaining: int = 60
+    blink: bool = False
+    # Audio-only alarm cue -- "" | "warning" | "critical". No pop-up/banner
+    # is driven by this; it exists purely so the frontend knows whether to
+    # play a single beep (warning) or a continuous beep (critical), per
+    # the same critical/warning split used in alarm_engine.py.
+    beep_level: str = ""
+
+
+# ----------------- EMERGENCY BUOY DEPLOYMENT SCENARIO -----------------
+class BuoyScenarioTelemetry(BaseModel):
+    active: bool = False
+    mission_name: str = ""
+    success: Optional[bool] = None
+    result_message: str = ""
+    current_stage: int = 0
+    feedback_msg: str = ""
+    blink: bool = False
+    # Audio-only alarm cue fields used by emergency_buoy_scenario.py's
+    # Stage 1 (navigation instability). No pop-up/banner is driven by
+    # this -- same convention as ScenarioTelemetry/Co2ScenarioTelemetry.
+    alarm_active: bool = False
+    alarm_message: str = ""
+
+
+# ----------------- RULE ENGINE / SOP STATE -----------------
+class EventLogEntry(BaseModel):
+    timestamp: str = ""
+    side: str = ""                       # PORT / STARBOARD / GLOBAL
+    switch: str = ""
+    field_path: str = ""                 # e.g. "switches.p.emg_led_p" -- lets the
+                                          # frontend correlate a toggle with its result
+    previous_state: str = ""
+    new_state: str = ""
+    expected_action: str = ""
+    action_type: str = ""                # CORRECT / FLEXIBLE_ORDER / OUT_OF_ORDER / EARLY_ACTION / WARNING / NO_GO
+    warning: str = ""
+    go_no_go: str = ""                   # GO / NO_GO / ""
+    measured_voltage: float = 0.0
+    measured_soc: float = 0.0
+    measured_temperature: float = 0.0
+    measured_ir: float = 0.0
+    alarm_status: str = "NONE"
+    seq: int = 0                          # monotonic counter, unique per log entry -- lets the
+                                           # frontend dedupe voice-over reliably instead of relying
+                                           # on the 1-second-resolution `timestamp` string
+
+
+class ScenarioTelemetry(BaseModel):
+    active: bool = False
+    mission_name: str = "MATSYA Power-Up SOP"
+    feedback_msg: str = "Awaiting power-up sequence start."
+    active_side: str = ""    # "" / "P" / "S" -- which side is currently being powered up
+    next_step_p: str = "[P] Check/confirm E_BATTS position, then activate EMG_LED and run SCRUBBER_CO2_CHECK (any order)"
+    next_step_s: str = "[S] Check/confirm E_BATTS position, then activate EMG_LED and run SCRUBBER_CO2_CHECK (any order)"
+    last_result: str = ""
+    blink: bool = False
+    global_power_available: bool = False
+    communication_system_ready: bool = False
+    power_control_system_ready: bool = False
+    last_action_type: str = ""
+    last_warning: str = ""
+    last_go_no_go: str = ""
+    event_log: List[EventLogEntry] = []
+
+    # ── Fault-injection / alarm state (Medium & Hard training scenarios) ──
+    alarm_active: bool = False            # True while a NO-GO fault is unresolved
+    alarm_message: str = ""               # spoken + shown while alarm_active is True
+    fault_type: str = ""                  # "" / "IR_FAULT_MB_S3" / "BLACKOUT_UB_P"
+    clear_message: str = ""               # spoken once, on the alarm_active True -> False edge
+
+    # ── Final phase (SOP Steps 57-60: comms/SOC checks, EB revert, UB AB->MB changeover) ──
+    next_step_final: str = ""
+    main_battery_complete: bool = False   # scenario intentionally ends here (SOP steps 1-60)
+
+    # Post power-up phases (SOP order, steps 63-108):
+    # IMAGING -> SENSORS -> COMMS -> BALLAST -> PROPULSION
+    # (each phase only activates once the previous one is complete)
+    imaging_active: bool = False
+    imaging_complete: bool = False
+    next_step_imaging: str = ""
+    sensors_active: bool = False
+    sensors_complete: bool = False
+    next_step_sensors: str = ""
+    comms_active: bool = False
+    comms_complete: bool = False
+    next_step_comms: str = ""
+    ballast_active: bool = False
+    ballast_complete: bool = False
+    next_step_ballast: str = ""
+    propulsion_active: bool = False
+    propulsion_complete: bool = False
+    next_step_propulsion: str = ""
 
 
 # ----------------- ATOMIC TYPES -----------------
@@ -30,46 +128,52 @@ class HeaderTelemetry(BaseModel):
     present_time: str = "00:00:00"
     heading: NumericTelemetry = NumericTelemetry(value=0.0, unit="deg")
     depth: NumericTelemetry = NumericTelemetry(value=0.0, unit="m")
-    altitude: NumericTelemetry = NumericTelemetry(value=0.0, unit="m")
-    mb_p_soc: NumericTelemetry = NumericTelemetry(value=0.0, unit="%")
-    mb_s_soc: NumericTelemetry = NumericTelemetry(value=0.0, unit="%")
+    altitude: NumericTelemetry = NumericTelemetry(value=4.2, unit="m")
+    mb_p_soc: NumericTelemetry = NumericTelemetry(value=85.0, unit="%")
+    mb_s_soc: NumericTelemetry = NumericTelemetry(value=85.0, unit="%")
 
 
 class IMUTelemetry(BaseModel):
-    roll: NumericTelemetry = NumericTelemetry(value=0.0, unit="")
-    pitch: NumericTelemetry = NumericTelemetry(value=0.0, unit="")
-    heading_p: NumericTelemetry = NumericTelemetry(value=0.0, unit="deg")
+    roll: NumericTelemetry = NumericTelemetry(value=0.6, unit="")
+    pitch: NumericTelemetry = NumericTelemetry(value=-0.3, unit="")
+    heading_p: NumericTelemetry = NumericTelemetry(value=142.0, unit="deg")
 
 
 class BottomStrip(BaseModel):
-    east_speed: NumericTelemetry = NumericTelemetry(value=0.0, unit="m/s")
-    vert_speed: NumericTelemetry = NumericTelemetry(value=0.0, unit="m/s")
-    north_speed: NumericTelemetry = NumericTelemetry(value=0.0, unit="m/s")
-    ship_heading: NumericTelemetry = NumericTelemetry(value=0.0, unit="deg")
+    east_speed: NumericTelemetry = NumericTelemetry(value=0.15, unit="m/s")
+    vert_speed: NumericTelemetry = NumericTelemetry(value=0.05, unit="m/s")
+    north_speed: NumericTelemetry = NumericTelemetry(value=0.10, unit="m/s")
+    ship_heading: NumericTelemetry = NumericTelemetry(value=142.0, unit="deg")
 
 
 class PropulsionTelemetry(BaseModel):
-    t1_rpm: float = 0
-    t2_rpm: float = 0
-    t3_rpm: float = 0
-    t4_rpm: float = 0
-    t5_rpm: float = 0
-    t6_rpm: float = 0
-    t7_rpm: float = 0
-    t8_rpm: float = 0
-    latitude: NumericTelemetry = NumericTelemetry(value=0.0, unit="deg")
-    longitude: NumericTelemetry = NumericTelemetry(value=0.0, unit="deg")
+    # In-dive default: vehicle already underway with thrusters running
+    # (matches ThrusterTelemetry's running defaults below), not freshly
+    # powered off -- that's what made the Main tab RPM boxes read 0.00.
+    t1_rpm: float = 900.0
+    t2_rpm: float = 900.0
+    t3_rpm: float = 900.0
+    t4_rpm: float = 900.0
+    t5_rpm: float = 900.0
+    t6_rpm: float = 900.0
+    t7_rpm: float = 900.0
+    t8_rpm: float = 900.0
+    latitude: NumericTelemetry = NumericTelemetry(value=12.90, unit="deg")
+    longitude: NumericTelemetry = NumericTelemetry(value=80.30, unit="deg")
 
 
 class ThrusterTelemetry(BaseModel):
     """Per-thruster detailed telemetry shown in the Propulsion screen"""
-    rpm: float = 0.0           # 0-1600
-    voltage: float = 0.0       # V
-    current: float = 0.0       # A
-    temp: float = 0.0          # deg C
-    ctrl: float = 0.0          # control setpoint
-    power: bool = False         # power toggle
-    enable: bool = False        # enable toggle
+    # In-dive default: already running (power+enable ON), not idle at 0 --
+    # values match the "running" branch of main.py's
+    # _sync_thruster_telemetry() so a toggle later doesn't cause a jump.
+    rpm: float = 900.0         # 0-1600
+    voltage: float = 48.0      # V
+    current: float = 17.0      # A
+    temp: float = 35.0         # deg C
+    ctrl: float = 65.0         # control setpoint
+    power: bool = True          # power toggle
+    enable: bool = True         # enable toggle
 
 
 class PropulsionDetailState(BaseModel):
@@ -90,19 +194,27 @@ class PropulsionDetailState(BaseModel):
 
 
 class EnvironmentTelemetry(BaseModel):
-    o2: NumericTelemetry = NumericTelemetry(value=0.0, unit="%")
-    co2: NumericTelemetry = NumericTelemetry(value=0.0, unit="ppm")
-    temp: NumericTelemetry = NumericTelemetry(value=0.0, unit="deg C")
-    pressure: NumericTelemetry = NumericTelemetry(value=0.0, unit="mbar")
+    o2: NumericTelemetry = NumericTelemetry(value=20.9, unit="%")
+    co2: NumericTelemetry = NumericTelemetry(value=450.0, unit="ppm")
+    temp: NumericTelemetry = NumericTelemetry(value=24.0, unit="deg C")
+    pressure: NumericTelemetry = NumericTelemetry(value=1013.0, unit="mbar")
 
 
 class SidebarControls(BaseModel):
-    joystick: bool = False
-    thrusters_enable: bool = False
-    high_speed: bool = False
+    # In-dive default: vehicle already underway, not freshly powered off --
+    # matches ThrusterTelemetry's running defaults above.
+    joystick: bool = True
+    thrusters_enable: bool = True
+    high_speed: bool = True
     ir_ok: bool = True
     water_ingress: bool = False
     comm_status: bool = False
+    # Per-side EMCS/WAGO power state. `comm_status` above stays as the
+    # global OR (for anything that only cares "is EMCS up at all"), but the
+    # PORT and STARBOARD switch pages must react to their OWN side only —
+    # otherwise powering WAGO on one side lights up both pages.
+    comm_status_p: bool = False
+    comm_status_s: bool = False
 
 
 class LedIndicators(BaseModel):
@@ -115,19 +227,19 @@ class LedIndicators(BaseModel):
 
 
 class HSSSSideTelemetry(BaseModel):
-    co2: NumericTelemetry = NumericTelemetry(value=0.0, unit="ppm")
+    co2: NumericTelemetry = NumericTelemetry(value=420.0, unit="ppm")
     oxygen: NumericTelemetry = NumericTelemetry(value=21.0, unit="% v/v")
-    pressure: NumericTelemetry = NumericTelemetry(value=0.0, unit="")
-    temp: NumericTelemetry = NumericTelemetry(value=0.0, unit="")
-    humidity: NumericTelemetry = NumericTelemetry(value=0.0, unit="")
+    pressure: NumericTelemetry = NumericTelemetry(value=1013.0, unit="mbar")
+    temp: NumericTelemetry = NumericTelemetry(value=24.5, unit="deg C")
+    humidity: NumericTelemetry = NumericTelemetry(value=45.0, unit="%")
     smoke_sensor: str = "NO SMOKE"
     flame_sensor: str = "NO FLAME"
     heat_sensor: str = "Normal"
-    hydrogen: NumericTelemetry = NumericTelemetry(value=0.0, unit="%")
-    lp_l_pressure: NumericTelemetry = NumericTelemetry(value=0.0, unit="bar")
-    hp_b1_pressure: NumericTelemetry = NumericTelemetry(value=0.0, unit="bar")
-    hp_b2_pressure: NumericTelemetry = NumericTelemetry(value=0.0, unit="bar")
-    hp_b3_pressure: NumericTelemetry = NumericTelemetry(value=0.0, unit="bar")
+    hydrogen: NumericTelemetry = NumericTelemetry(value=0.4, unit="%")
+    lp_l_pressure: NumericTelemetry = NumericTelemetry(value=210.0, unit="bar")
+    hp_b1_pressure: NumericTelemetry = NumericTelemetry(value=205.0, unit="bar")
+    hp_b2_pressure: NumericTelemetry = NumericTelemetry(value=207.0, unit="bar")
+    hp_b3_pressure: NumericTelemetry = NumericTelemetry(value=203.0, unit="bar")
 
 
 class HSSSTelemetry(BaseModel):
@@ -263,17 +375,19 @@ class ImagingState(BaseModel):
 
 # ----------------- SENSORS SECTIONS -----------------
 class SensorsToggles(BaseModel):
-    depth_sensor_pri: bool = False
-    ins: bool = False
-    ctdo: bool = False
-    dvl: bool = False
-    multibeam_sonar: bool = False
-    
-    altimeter: bool = False
-    dissolved_o2: bool = False
-    ctdo_s: bool = False
-    mbs: bool = False
-    img_sonar: bool = False
+    # In-dive default: sensor suite is already powered up and running, not
+    # freshly off (which is what made the Sensors tab read blank).
+    depth_sensor_pri: bool = True
+    ins: bool = True
+    ctdo: bool = True
+    dvl: bool = True
+    multibeam_sonar: bool = True
+
+    altimeter: bool = True
+    dissolved_o2: bool = True
+    ctdo_s: bool = True
+    mbs: bool = True
+    img_sonar: bool = True
 
     laser_light_2: bool = False
     pan_and_tilt_p1: bool = False
@@ -315,35 +429,35 @@ class ScientificSensorRow(BaseModel):
 
 
 class ScientificSensors(BaseModel):
-    conductivity: ScientificSensorRow = ScientificSensorRow()
-    salinity: ScientificSensorRow = ScientificSensorRow()
-    water_density: ScientificSensorRow = ScientificSensorRow()
-    turbidity: ScientificSensorRow = ScientificSensorRow()
-    ph: ScientificSensorRow = ScientificSensorRow()
-    ctd_temp: ScientificSensorRow = ScientificSensorRow()
-    pressure: ScientificSensorRow = ScientificSensorRow()
-    dissolved_oxygen: ScientificSensorRow = ScientificSensorRow()
-    orp: ScientificSensorRow = ScientificSensorRow()
+    conductivity: ScientificSensorRow = ScientificSensorRow(port=5.2, stbd=5.2)
+    salinity: ScientificSensorRow = ScientificSensorRow(port=34.7, stbd=34.7)
+    water_density: ScientificSensorRow = ScientificSensorRow(port=1027.5, stbd=1027.5)
+    turbidity: ScientificSensorRow = ScientificSensorRow(port=1.8, stbd=1.8)
+    ph: ScientificSensorRow = ScientificSensorRow(port=7.9, stbd=7.9)
+    ctd_temp: ScientificSensorRow = ScientificSensorRow(port=3.2, stbd=3.2)
+    pressure: ScientificSensorRow = ScientificSensorRow(port=588.0, stbd=588.0)
+    dissolved_oxygen: ScientificSensorRow = ScientificSensorRow(port=145.0, stbd=145.0)
+    orp: ScientificSensorRow = ScientificSensorRow(port=210.0, stbd=210.0)
 
 
 class SurfaceINS(BaseModel):
-    s_roll: float = 0.0
-    s_pitch: float = 0.0
-    s_heading: float = 0.0
-    s_speed1: float = 0.0
-    s_speed2: float = 0.0
-    s_speed3: float = 0.0
-    s_latitude: float = 0.0
-    s_longitude: float = 0.0
+    s_roll: float = 0.4
+    s_pitch: float = -0.2
+    s_heading: float = 142.0
+    s_speed1: float = 0.3
+    s_speed2: float = 0.1
+    s_speed3: float = 0.05
+    s_latitude: float = 12.90
+    s_longitude: float = 80.30
 
 
 class SubSeaGPS(BaseModel):
-    gps_latitude: float = 0.0
-    gps_longitude: float = 0.0
+    gps_latitude: float = 12.90
+    gps_longitude: float = 80.30
 
 
 class RedtDepthSensor(BaseModel):
-    s_depth: float = 0.0
+    s_depth: float = 5850.0
 
 
 class SensorsState(BaseModel):
@@ -385,8 +499,15 @@ class LoggingToggles(BaseModel):
 
 
 class LoggingState(BaseModel):
-    events: list[LogEntry] = []
-    errors: list[LogEntry] = []
+    events: list[LogEntry] = [
+        LogEntry(date="2026-08-25", time="09:02:11", location="Surface", message="Pre-dive checks complete. System powered ON."),
+        LogEntry(date="2026-08-25", time="09:14:47", location="Depth 120m", message="Descent initiated. All systems nominal."),
+        LogEntry(date="2026-08-25", time="10:03:22", location="Depth 3400m", message="Passed mid-water checkpoint. HSSS readings stable."),
+        LogEntry(date="2026-08-25", time="11:47:05", location="Depth 5850m", message="Seabed proximity detected. Altimeter engaged."),
+    ]
+    errors: list[LogEntry] = [
+        LogEntry(date="2026-08-25", time="10:41:18", location="PDE_S", message="Transient IR dip on PDE_S bus — self-cleared within 4s."),
+    ]
     toggles: LoggingToggles = LoggingToggles()
 
 
@@ -582,7 +703,7 @@ class SwitchesCategory_P(BaseModel):
     mb_p_pde_p: bool = False
 
     # New additions
-    ib_insulation: float = 0.0
+    ib_insulation: float = 4.0
     eb_b_status: float = 0.0
     ub_voltage: float = 0.0
     power_selection_eb: str = "1"
@@ -590,33 +711,58 @@ class SwitchesCategory_P(BaseModel):
     ub_mcb: bool = False
     
     # Frontend aliases
-    ab_p: bool = False
+    # AB_P rotary starts in position 2 (24v PDE_P) per initial-condition spec
+    ab_p: bool = True
     e_batts: bool = False
     ub_p_mcb: bool = False
     ub_p_mcb2: bool = False
-    ub_p: bool = False
 
-    # Custom layout fields (mirrors SwitchesCategory_S)
-    pde_p_olr_rst: bool = False
+    # Custom layout fields (frontend-specific names)
+    pde_p_clr_rst: bool = False
     oim_p_reset: bool = False
-    pde_p_oim: bool = False
     ab_p_power: bool = False
+    pde_p_dim: bool = False
     ide_p_1: bool = False
-    emg_led_p: bool = False
-    int_led_p: bool = False
-    pde_p_24v: bool = False
-    pde_p_24v_main: bool = False
-    pde_p_olr: bool = False
-    main_24_p: bool = False
-
-    # Additional frontend widgets (SwitchesPLayout)
     ide_2: bool = False
     spare_2: bool = False
     oim_p: bool = False
     spare_p: bool = False
     wago_p: bool = False
+    pde_p_24v: bool = False
+    mb_1: bool = False
+    mb_2: bool = False
+    mb_3: bool = False
+    mb_4: bool = False
+    mb_5: bool = False
+    pde_p_olr: bool = False
+    pde_p_148: bool = False
+    pde_p_24v_main: bool = False
+    emg_led_p: bool = False
+    int_led_p: bool = False
+    # SDW aliases (frontend uses sdwp_1..10 / sdws_1..10)
+    sdwp_1: bool = False
+    sdwp_2: bool = False
+    sdwp_3: bool = False
+    sdwp_4: bool = False
+    sdwp_5: bool = False
+    sdwp_6: bool = False
+    sdwp_7: bool = False
+    sdwp_8: bool = False
+    sdwp_9: bool = False
+    sdwp_10: bool = False
+    sdws_1: bool = False
+    sdws_2: bool = False
+    sdws_3: bool = False
+    sdws_4: bool = False
+    sdws_5: bool = False
+    sdws_6: bool = False
+    sdws_7: bool = False
+    sdws_8: bool = False
+    sdws_9: bool = False
+    sdws_10: bool = False
     sdw_master_p: bool = False
     sdw_master_s: bool = False
+    sdw_master_stbd: bool = False
     sdw_master_stbd_p: bool = False
     sdw_master_stbd_s: bool = False
 
@@ -648,10 +794,6 @@ class SwitchesCategory_S(BaseModel):
     uw_camera_s: bool = False
     sonar: bool = False
     surface_ins: bool = False
-    aps_2: bool = False
-    vhf: bool = False
-    uwt: bool = False
-    e_batt_s: bool = False
 
     # Service Drop Weight Switches
     port_side_sdw_1: bool = False
@@ -726,10 +868,26 @@ class SwitchesCategory_S(BaseModel):
     pde_s_olr: bool = False
     mb_s_pde_s: bool = False
     main_24_s: bool = False
+    pde_s_148: bool = False
+
+    # General control switch aliases (frontend-specific)
+    e_batt_s: bool = False
+    aps_2: bool = False
+    joystick_p: bool = False
     emg_led_s: bool = False
-    int_led_s: bool = False
+    co2_s: bool = False
+    co2_p: bool = False
+    vhs_pow_s: bool = False
+    vhs_pow_p: bool = False
+    uwt: bool = False
+    vhf: bool = False
     mbs_ctrl: bool = False
     dc_fan: bool = False
+    emg_led_p: bool = False
+    int_led_s: bool = False
+    int_led_p: bool = False
+    uw_led_s: bool = False
+    uw_led_p: bool = False
 
 class SwitchesSW3(BaseModel):
     # Emergency Jettisoning - Trim
@@ -782,6 +940,8 @@ class SwitchesSW3(BaseModel):
     samp_p2: bool = False
     ejx_p1: bool = False
     ejx_p2: bool = False
+    ejx_s1: bool = False
+    ejx_s2: bool = False
     
     ejs_p1: bool = False
     ejs_p2: bool = False
@@ -798,11 +958,15 @@ class SwitchesSW3(BaseModel):
     edw_s3: bool = False
     edw_s4: bool = False
 
-    # Bottom controls
-    fb_p: bool = False
-    dive_in: bool = False
-    hp_ap: bool = False
-    hp_bp: bool = False
+    # Bottom controls (field names match SwitchesLayout.jsx apiCall paths exactly)
+    freeboard_p: bool = False
+    freeboard_s: bool = False
+    dive_in_on: bool = False
+    dive_in_off: bool = False
+    hp_ap_on: bool = False
+    hp_ap_off: bool = False
+    hp_bp_on: bool = False
+    hp_bp_off: bool = False
 
     # Rotary controls
     fwd_ctrl: bool = False
@@ -845,18 +1009,6 @@ class SwitchesSW3(BaseModel):
     ins_pseb_s: bool = False
     ins_sp1_s: bool = False
 
-    # Additional frontend widgets (Switches3Layout)
-    ejx_s1: bool = False
-    ejx_s2: bool = False
-    freeboard_p: bool = False
-    freeboard_s: bool = False
-    dive_in_on: bool = False
-    dive_in_off: bool = False
-    hp_ap_on: bool = False
-    hp_ap_off: bool = False
-    hp_bp_on: bool = False
-    hp_bp_off: bool = False
-
 class SwitchesState(BaseModel):
     p: SwitchesCategory_P = SwitchesCategory_P()
     s: SwitchesCategory_S = SwitchesCategory_S()
@@ -864,9 +1016,22 @@ class SwitchesState(BaseModel):
 
 
 # ----------------- ROOT STATE -----------------
+# ----------------- ROOT STATE -----------------
 class MatsyaUIState(BaseModel):
     is_powered_on: bool = False
     active_tab: str = "Main"
+
+    # ADD THESE 4 LINES to support scenario.py
+    active_scenario: str = ""
+    scenario_step: int = 0
+    scenario_message: str = ""
+    alarms: list[str] = []
+
+    # Populated every tick by alarm_engine.update_app_state() (called from
+    # main.py's broadcast()) -- the DNV alarm-document threshold engine
+    # needs these two fields to exist before it can write to them.
+    active_alarms: list[dict] = []
+    beep_level: str = ""
 
     header: HeaderTelemetry = HeaderTelemetry()
     imu: IMUTelemetry = IMUTelemetry()
@@ -887,5 +1052,8 @@ class MatsyaUIState(BaseModel):
     mcc: MCCState = MCCState()
     switches: SwitchesState = SwitchesState()
     scenario: ScenarioTelemetry = ScenarioTelemetry()
+    sample_scenario: SampleScenarioTelemetry = SampleScenarioTelemetry()
+    co2_scenario: Co2ScenarioTelemetry = Co2ScenarioTelemetry()
+    buoy_scenario: BuoyScenarioTelemetry = BuoyScenarioTelemetry()
 
 

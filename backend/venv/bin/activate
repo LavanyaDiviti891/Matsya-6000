@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/lavanyadiviti/Matsya-6000-SOP3/backend/venv"
+VIRTUAL_ENV="/Users/lavanyadiviti/All_repo/Emergency-matsya/backend/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

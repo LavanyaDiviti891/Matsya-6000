@@ -234,6 +234,7 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 0;
+    padding: 4px;
 }
 
 .big-numbers-row {
@@ -597,6 +598,90 @@ body {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================
+   SUBMERSIBLE IMAGE VIEWER
+   ========================== */
+.sub-viewer {
+    display: flex;
+    flex-direction: column;
+    /* Square that fills as much of compass-area as possible */
+    /* Height drives the square: constrained by viewport height minus header/footer */
+    height: min(calc(100vh - 300px), 100%);
+    aspect-ratio: 1 / 1;
+    gap: 8px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.sub-viewer-img-wrap {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: #c8e6f5;
+    border: 1px solid var(--color-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.sub-viewer-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transition: opacity 0.25s ease;
+}
+
+.sub-viewer-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.sub-viewer-nav {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.sub-view-btn {
+    padding: 4px 11px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.sub-view-btn:hover {
+    background: var(--color-border);
+    transform: translateY(-1px);
+}
+
+.sub-view-btn.active {
+    background: var(--color-accent, #1a6fc4);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
 }
 
 /* ==========================
@@ -4520,7 +4605,6 @@ body {
     padding: 2px 6px;
     border: 1px solid #ddd;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-    transform: rotate(-1deg);
     display: inline-block;
     text-transform: uppercase;
 }
@@ -4977,8 +5061,8 @@ body {
   color: #111;
   font-family: "Marker Felt", "Comic Sans MS", fantasy, sans-serif;
   font-weight: bold;
-  font-size: 18px;
-  padding: 3px 8px;
+  font-size: 16px;
+  padding: 5px 6px;
   border-radius: 1px;
   box-shadow: 1px 1px 3px rgba(0,0,0,0.4), inset 0 0 2px rgba(0,0,0,0.1);
   display: inline-block;
@@ -4987,6 +5071,7 @@ body {
   text-align: center;
   z-index: 2;
   position: relative;
+  transform: none !important;
 }
 
 /* Realistic toggle base assembly */
@@ -5165,34 +5250,4 @@ body {
 .real-round-btn:active {
   background: #111;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
-}
-
-/* ===== Switches page (SW_P / SW_S / SW-3) — fit to 15.6" laptop screens ===== */
-/* These pages use large fixed-pixel widgets (e.g. the 648px monitor), which
-   overflow/crowd on typical 15.6" laptop panels (1366x768 - 1536x864 logical px).
-   Scale the whole panel down as one unit so nothing overlaps and proportions
-   (switches vs dials vs monitor) stay consistent. */
-.switches-page-scale {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.switches-page-inner {
-  transform-origin: top center;
-  width: 1500px; /* natural/authored width of the page content */
-}
-
-/* 15.6" screens at common scaled resolutions */
-@media (max-width: 1600px) {
-  .switches-page-inner { transform: scale(0.88); margin-bottom: -120px; }
-}
-@media (max-width: 1440px) {
-  .switches-page-inner { transform: scale(0.8); margin-bottom: -220px; }
-}
-@media (max-width: 1366px) {
-  .switches-page-inner { transform: scale(0.72); margin-bottom: -300px; }
-}
-@media (max-width: 1280px) {
-  .switches-page-inner { transform: scale(0.66); margin-bottom: -360px; }
 }

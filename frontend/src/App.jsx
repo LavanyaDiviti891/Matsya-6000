@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './index.css'
 import { HeaderArea, AppLayout } from './components/MainLayout'
 import { BottomTabsNav } from './components/Layout'
-import { ScenarioBanner } from './components/ScenarioBanner'
 import { SwitchesPLayout, SwitchesSLayout, Switches3Layout } from './components/SwitchesLayout'
+import { ScenarioBanner } from './components/ScenarioBanner'
+import { useSopEffects, useSampleScenarioEffects } from './hooks/useSopEffects'
+import { useCo2ScenarioEffects } from './hooks/useCo2ScenarioEffects'
+import { useScenarioBeep } from './hooks/useScenarioBeep'
 import {
   HsssLayout, BallastLayout, PropulsionLayout, PowerLayout,
   ImagingLayout, SensorsLayout, LoggingLayout, StatusLayout,
@@ -24,28 +27,57 @@ function App() {
   const [activeTab, setActiveTab] = useState("Main")
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws')
+    let isMounted = true
+    let ws = null
+    let reconnectTimer = null
 
-    ws.onopen = () => {
-      setConnected(true)
-    }
+    const connect = () => {
+      ws = new WebSocket('ws://localhost:8000/ws')
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        setAppState(data)
-      } catch (e) {
-        console.error("Failed to parse websocket message", e)
+      ws.onopen = () => {
+        if (!isMounted) return
+        setConnected(true)
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer)
+          reconnectTimer = null
+        }
+      }
+
+      ws.onmessage = (event) => {
+        if (!isMounted) return
+        try {
+          const data = JSON.parse(event.data)
+          setAppState(data)
+        } catch (e) {
+          console.error("Failed to parse websocket message", e)
+        }
+      }
+
+      ws.onclose = () => {
+        if (!isMounted) return
+        setConnected(false)
+        // The backend's --reload watcher (or a dropped connection) closes
+        // the socket without warning. Without this, `connected` just stays
+        // false forever, the red banner never clears, and appState freezes
+        // -- which looks exactly like "I click the button and nothing
+        // happens", even though the POST itself succeeded server-side.
+        reconnectTimer = setTimeout(() => {
+          if (isMounted) connect()
+        }, 2000)
+      }
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err)
+        ws.close()
       }
     }
 
-    ws.onclose = () => {
-      setConnected(false)
-      // Attempt to reconnect after a delay could go here
-    }
+    connect()
 
     return () => {
-      ws.close()
+      isMounted = false
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (ws) ws.close()
     }
   }, [])
 
@@ -56,6 +88,19 @@ function App() {
       setActiveTab("Main")
     }
   }, [appState?.is_powered_on])
+
+  // Voice-over effects -- also called unconditionally, before the early
+  // return, so hook order stays stable across renders. Each hook no-ops
+  // internally until appState is populated.
+  useSopEffects(appState)
+  useSampleScenarioEffects(appState)
+  useCo2ScenarioEffects(appState)
+  // Beep-only cue for both the CO2 alarm and the navigation-instability
+  // alarm in the combined co2_scenario.py mission -- no pop-up is added
+  // by this hook (see hooks/useScenarioBeep.js). If useCo2ScenarioEffects
+  // already renders its own visual alarm for the CO2 stage, that's a
+  // separate file we don't have this turn -- see the note below.
+  useScenarioBeep(appState)
 
   if (!appState) {
     return <div className="loading">Connecting to Submersible Data Stream...</div>
@@ -82,8 +127,8 @@ function App() {
   return (
     <div className={`dashboard-root ${!appState.is_powered_on ? 'system-off' : ''} ${isOnSwitchesPage ? 'on-switches-page' : ''}`}>
       {!connected && <div style={{ background: 'red', color: 'white', padding: '5px', textAlign: 'center' }}>Disconnected from Backend</div>}
+      {activeTab === "Main-2" && <ScenarioBanner appState={appState} apiCall={apiCall} />}
       {!isDedicatedSwitchesPage && <HeaderArea appState={appState} apiCall={apiCall} />}
-      {activeTab === "Main-2" && <ScenarioBanner appState={appState} />}
       {activeTab === "Main" ? <AppLayout appState={appState} apiCall={apiCall} />
       : activeTab === "Main-2" ? <AppLayout appState={appState} apiCall={apiCall} />
       : activeTab === "Switches_P" ? <SwitchesPLayout appState={appState} apiCall={apiCall} />

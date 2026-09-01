@@ -10,7 +10,10 @@ import glob
 from datetime import datetime
 
 from models import MatsyaUIState
-from scenario import run_poweringup_scenario, reset_scenario
+import rule_engine
+import sample_scenario
+import co2_scenario
+import alarm_engine
 
 app = FastAPI()
 
@@ -43,15 +46,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 async def broadcast():
+    # Recompute the DNV alarm-document thresholds every time we push state.
+    # This only ever sets app_state.beep_level / active_alarms -- it does
+    # not open any popup; the frontend beeps according to beep_level.
+    alarm_engine.update_app_state(app_state)
+
     if not connected_clients:
         return
-        
-    # ENFORCE SOP RULES: Zero out voltage if UB_MCB is not active
-    if not app_state.switches.p.ub_mcb:
-        app_state.switches.p.ub_voltage = 0.0
-    if not app_state.switches.s.ub_mcb:
-        app_state.switches.s.ub_voltage = 0.0
-
     data = app_state.model_dump()
     disconnected = set()
     for client in connected_clients:
@@ -64,7 +65,6 @@ async def broadcast():
 
 # ----------------- APIs & SIMULATION -----------------
 simulator_task = None
-scenario_task = None
 
 
 class SimState:
@@ -165,6 +165,26 @@ async def simulate_data():
             if value is None:
                 continue
 
+            # While the SAMPLE COLLECTION scenario is running it owns
+            # header.depth exclusively (it sets a seabed value and the
+            # pilot doesn't expect it to drift back to the dive-tape
+            # value mid-mission) -- same behavior as the old UI.
+            if app_state.sample_scenario.active and var_path == "header.depth":
+                continue
+
+            # While the combined CO2 -> nav-instability -> buoy mission is
+            # running it owns depth, altitude, and all three CO2 fields
+            # exclusively (see co2_scenario.py's module docstring) -- the
+            # live-data simulator must not fight it for these paths.
+            if app_state.co2_scenario.active and var_path in (
+                "header.depth",
+                "header.altitude",
+                "hsss.p.co2",
+                "hsss.s.co2",
+                "environment.co2",
+            ):
+                continue
+
             parts = var_path.split(".")
             obj = s
             try:
@@ -253,12 +273,137 @@ async def generic_toggle(state_path: str, val: Optional[str] = Form(None)):
     for p in parts[:-1]:
         obj = getattr(obj, p)
 
+    previous_val = getattr(obj, parts[-1])
     if val is not None:
         setattr(obj, parts[-1], val)
+        new_val = val
     else:
-        current_val = getattr(obj, parts[-1])
-        setattr(obj, parts[-1], not current_val)
+        new_val = not previous_val
+        setattr(obj, parts[-1], new_val)
 
+    # Let the SOP rule engine (if the training scenario is active) classify
+    # this exact switch action against the real MATSYA power-up sequence --
+    # this is what gates alarms/faults behind the actual step order instead
+    # of firing them the instant a "medium/high" mode is picked.
+    if app_state.scenario.active:
+        rule_engine.evaluate_action(app_state, state_path, previous_val, new_val)
+        rule_engine.recompute_derived_flags(app_state)
+
+    # Thruster POWER/ENABLE switches (Propulsion tab) previously toggled
+    # with no visible effect -- RPM/Voltage/Current/Temp stayed at 0.00
+    # forever because nothing ever wrote to propulsion_detail.tN's other
+    # fields. Synthesize plausible telemetry the moment a thruster's
+    # power/enable state changes so the gauges actually move.
+    if len(parts) == 3 and parts[0] == "propulsion_detail" and parts[2] in ("power", "enable"):
+        _sync_thruster_telemetry(app_state, parts[1])
+
+    await broadcast()
+    return {"status": "ok"}
+
+
+def _sync_thruster_telemetry(app_state, thruster_key: str) -> None:
+    """
+    thruster_key is e.g. "t1". Keeps propulsion_detail.<thruster_key>'s
+    rpm/voltage/current/temp/ctrl in sync with its power+enable switches,
+    and mirrors rpm into the flat propulsion.<thruster_key>_rpm field used
+    on the Main tab.
+    """
+    t = getattr(app_state.propulsion_detail, thruster_key, None)
+    if t is None:
+        return
+
+    if t.power and t.enable:
+        # Running: nominal RPM/voltage/current/temp, only re-roll RPM if
+        # it was previously at rest so it doesn't jitter on every toggle.
+        if not t.rpm:
+            t.rpm = round(random.uniform(750, 1150), 1)
+        t.voltage = round(random.uniform(46.0, 50.0), 1)
+        t.current = round(random.uniform(12.0, 22.0), 1)
+        t.temp = round(random.uniform(28.0, 42.0), 1)
+        t.ctrl = round(random.uniform(40.0, 90.0), 1)
+    elif t.power and not t.enable:
+        # Powered but not enabled: bus voltage present, motor idle.
+        t.rpm = 0.0
+        t.voltage = round(random.uniform(46.0, 50.0), 1)
+        t.current = round(random.uniform(0.3, 1.5), 1)
+        t.temp = round(random.uniform(20.0, 25.0), 1)
+        t.ctrl = 0.0
+    else:
+        t.rpm = 0.0
+        t.voltage = 0.0
+        t.current = 0.0
+        t.temp = 0.0
+        t.ctrl = 0.0
+
+    rpm_field = f"{thruster_key}_rpm"
+    if hasattr(app_state.propulsion, rpm_field):
+        setattr(app_state.propulsion, rpm_field, t.rpm)
+
+
+# ----------------- SAMPLE COLLECTION SCENARIO (ported from old UI) -----------------
+sample_scenario_task = None
+
+
+@app.post("/api/scenario/sample/start")
+async def sample_scenario_start():
+    global sample_scenario_task
+    if sample_scenario_task is None or sample_scenario_task.done():
+        sample_scenario_task = asyncio.create_task(
+            sample_scenario.run(app_state, broadcast)
+        )
+    return {"status": "ok"}
+
+
+@app.post("/api/scenario/sample/reset")
+async def sample_scenario_reset():
+    global sample_scenario_task
+    if sample_scenario_task and not sample_scenario_task.done():
+        sample_scenario_task.cancel()
+    sample_scenario.reset(app_state)
+    await broadcast()
+    return {"status": "ok"}
+
+
+# ----------------- CO2 SCRUBBER FAILURE -> NAV INSTABILITY -> BUOY (combined) -----------------
+# Replaces the old separate sample co2_scenario / emergency_buoy_scenario
+# pair with the single ordered mission in co2_scenario.py: CO2 alarm first,
+# then navigation instability, then buoy release. Routes are unchanged
+# (/api/scenario/co2/start, /api/scenario/co2/reset) so nothing else needs
+# to move.
+co2_scenario_task = None
+
+
+@app.post("/api/scenario/co2/start")
+async def co2_scenario_start():
+    global co2_scenario_task
+    if co2_scenario_task is None or co2_scenario_task.done():
+        co2_scenario_task = asyncio.create_task(
+            co2_scenario.run(app_state, broadcast)
+        )
+    return {"status": "ok"}
+
+
+@app.post("/api/scenario/co2/reset")
+async def co2_scenario_reset():
+    global co2_scenario_task
+    if co2_scenario_task and not co2_scenario_task.done():
+        co2_scenario_task.cancel()
+    co2_scenario.reset(app_state)
+    await broadcast()
+    return {"status": "ok"}
+
+
+# ----------------- SOP TRAINING SCENARIO -----------------
+@app.post("/api/scenario/poweringup/start")
+async def scenario_start():
+    rule_engine.start_scenario(app_state)
+    await broadcast()
+    return {"status": "ok"}
+
+
+@app.post("/api/scenario/poweringup/stop")
+async def scenario_stop():
+    rule_engine.stop_scenario(app_state)
     await broadcast()
     return {"status": "ok"}
 
@@ -308,27 +453,3 @@ async def sim_command(cmd: str):
     if cmd in ["start", "end"]:
         sim_global.command = cmd
     return {"status": "ok"}
-
-
-# ----------------- SCENARIO (SOP) -----------------
-@app.post("/api/scenario/poweringup/start")
-async def start_poweringup_scenario():
-    global scenario_task
-    if scenario_task is None or scenario_task.done():
-        reset_scenario(app_state.scenario)
-        scenario_task = asyncio.create_task(
-            run_poweringup_scenario(app_state, broadcast)
-        )
-        return {"status": "Scenario started"}
-    return {"status": "Scenario already running"}
-
-
-@app.post("/api/scenario/poweringup/stop")
-async def stop_poweringup_scenario():
-    global scenario_task
-    if scenario_task and not scenario_task.done():
-        scenario_task.cancel()
-        scenario_task = None
-    reset_scenario(app_state.scenario)
-    await broadcast()
-    return {"status": "Scenario stopped"}
